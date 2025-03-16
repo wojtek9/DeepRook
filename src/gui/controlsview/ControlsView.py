@@ -14,12 +14,16 @@ from PySide6.QtWidgets import (
     QToolButton,
 )
 
+from src.bot.ChessBot import ChessBot
+from src.session.SessionData import SessionData
 from src.utils import uiutils
 
 
 class ControlsView(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, session_data: SessionData, parent=None):
         super().__init__(parent)
+
+        self.session_data = session_data
 
         self.settings = {
             "turn": "",
@@ -57,6 +61,7 @@ class ControlsView(QWidget):
         start_layout = QVBoxLayout()
         # start_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         self.start_button = QPushButton("Start Bot")
+        self.start_button.clicked.connect(self._on_start_btn_clicked)
         start_layout.addWidget(self.start_button)
 
         self.color_group = QButtonGroup()
@@ -127,6 +132,7 @@ class ControlsView(QWidget):
         self.stockfish_button = QRadioButton("Stockfish")
         self.alphazero_button = QRadioButton("AlphaZero")
         self.leela_button = QRadioButton("Leela")
+        self.stockfish_button.setChecked(True)
         self.engine_group.addButton(self.stockfish_button)
         self.engine_group.addButton(self.alphazero_button)
         self.engine_group.addButton(self.leela_button)
@@ -149,6 +155,9 @@ class ControlsView(QWidget):
 
         uiutils.toggle_layout_widgets_visible(self.advanced_layout, False)
         self._toggle_move_delay_inputs(False)
+
+    def _on_start_btn_clicked(self):
+        bot = ChessBot()
 
     def _on_advanced_settings_toggle_btn_clicked(self):
         self.advanced_settings_visible = not self.advanced_settings_visible

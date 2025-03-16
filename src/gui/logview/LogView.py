@@ -16,11 +16,11 @@ class LogView(QWidget):
         self.log_view.setReadOnly(True)
         self.main_layout.addWidget(self.log_view)
 
-        AppLogger.verbose("VERBOSE")
-        AppLogger.debug("DEBUG")
-        AppLogger.info("INFO")
-        AppLogger.warn("WARN")
-        AppLogger.error("ERROR")
+        # AppLogger.verbose("VERBOSE")
+        # AppLogger.debug("DEBUG")
+        # AppLogger.info("INFO")
+        # AppLogger.warn("WARN")
+        # AppLogger.error("ERROR")
 
     def _write_to_log(self, log_type: LogLevel, msg: str):
         color, level, spaces = self._get_log_styles(log_type)
@@ -40,7 +40,7 @@ class LogView(QWidget):
                 level = "DEBUG"
                 spaces = "  "
             case LogLevel.INFO:
-                color = ""  # White
+                color = "#37d60f"  # Green
                 level = "INFO"
                 spaces = "   "
             case LogLevel.WARN:
@@ -57,4 +57,3 @@ class LogView(QWidget):
                 spaces = "  "
 
         return color, level, spaces
-

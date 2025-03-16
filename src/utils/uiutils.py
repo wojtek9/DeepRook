@@ -9,6 +9,7 @@ def get_separator():
     separator.setStyleSheet("border-left: 0.3px solid;  background: transparent; color: #303030;")
     return separator
 
+
 def toggle_layout_widgets_enabled(layout, enabled: bool = None):
     if layout is not None:
         for i in range(layout.count()):

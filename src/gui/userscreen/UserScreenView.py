@@ -1,84 +1,169 @@
-import mss
-from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QSizePolicy, QSpinBox, QComboBox, QHBoxLayout, QCheckBox
-from PySide6.QtGui import QImage, QPixmap
-from PySide6.QtCore import QTimer, Qt
+import os
+
+import cv2
+from PySide6.QtWidgets import (
+    QWidget,
+    QLabel,
+    QVBoxLayout,
+    QSizePolicy,
+    QSpinBox,
+    QComboBox,
+    QCheckBox,
+    QPushButton,
+    QDialog,
+    QGroupBox,
+    QFormLayout,
+)
+from PySide6.QtGui import QImage, QPixmap, QPainter, QPen
+from PySide6.QtCore import Qt, QRect
 
 from src.gui.userscreen.ScreenCapture import ScreenCapture
+from src.gui.userscreen.ScreenRegionSelector import ScreenRegionSelector
+from src.session.SessionData import SessionData
 
 
 class UserScreenView(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, session_data: SessionData, parent=None):
         super().__init__(parent)
+
+        self.session_data = session_data
+        self.session_data.selectedRegionChanged.connect(self.update_overlay)
+
+        # Screen Capture instance
+        self.screen_capture = ScreenCapture(self)
+        self.screen_capture.frameCaptured.connect(self.update_live_screen)  # Listen for frames
+        self.last_frame = None
 
         # Layout setup
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
 
-        # Control Panel Layout
-        self.controls_layout = QHBoxLayout()
+        # Control Panel Setup
+        self.control_panel = QGroupBox("Screen Capture Controls")
+        self.control_layout = QFormLayout(self.control_panel)
 
-        # Monitor Selection Dropdown
+        self.select_region_btn = QPushButton("Mark Chessboard Region")
+        self.select_region_btn.clicked.connect(self._select_chessboard_region)
+        self.control_layout.addRow("Select Region:", self.select_region_btn)
+
         self.monitor_selector = QComboBox()
-        self.monitor_selector.addItems(self.get_monitor_list())
+        self.monitor_selector.addItems(self.screen_capture.get_monitor_list())
         self.monitor_selector.currentIndexChanged.connect(self.update_monitor)
-        self.controls_layout.addWidget(self.monitor_selector)
+        self.control_layout.addRow("Monitor:", self.monitor_selector)
 
-        # FPS Selection
         self.fps_selector = QSpinBox()
         self.fps_selector.setRange(1, 60)
-        self.fps_selector.setValue(30)  # Default 30 FPS
+        self.fps_selector.setValue(10)
         self.fps_selector.valueChanged.connect(self.update_fps)
-        self.controls_layout.addWidget(self.fps_selector)
+        self.control_layout.addRow("FPS:", self.fps_selector)
 
-        # Enable/Disable Screen Capture Checkbox
         self.capture_checkbox = QCheckBox("Enable Screen Capture")
         self.capture_checkbox.setChecked(False)
         self.capture_checkbox.toggled.connect(self.toggle_screen_capture)
-        self.controls_layout.addWidget(self.capture_checkbox)
+        self.control_layout.addRow("Live Capture:", self.capture_checkbox)
 
-        self.layout.addLayout(self.controls_layout)
+        self.layout.addWidget(self.control_panel)
 
-        # QLabel for displaying screen capture
-        self.screen_label = QLabel(self)
-        self.screen_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.screen_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.layout.addWidget(self.screen_label)
+        # Label for displaying screen capture
+        self.live_screen_label = QLabel(self)
+        self.live_screen_label.setVisible(False)
+        self.live_screen_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.live_screen_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.layout.addWidget(self.live_screen_label)
 
-        # Screen Capture instance
-        self.screen_capture = ScreenCapture(self)
-        self.screen_capture.frameCaptured.connect(self.update_screen)  # Listen for frames
+        # Label for displaying captured region if screen capture is turned off
+        self.static_screen_label = QLabel(self)
+        self.static_screen_label.setVisible(True)
+        self.static_screen_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.static_screen_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.layout.addWidget(self.static_screen_label)
 
-    def update_screen(self, img):
-        """Update QLabel with the new screen frame."""
+    def update_live_screen(self, img_arr):
+        # Update Label with the new screen frame and overlay selection
+        height, width, _ = img_arr.shape
+        bytes_per_line = 3 * width
+        q_img = QImage(img_arr.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
+        pixmap = QPixmap.fromImage(q_img)
+
+        # Draw overlay
+        if self.session_data.selected_region:
+            painter = QPainter(pixmap)
+            painter.setPen(QPen(Qt.GlobalColor.red, 2))
+            x, y, w, h = self.session_data.selected_region
+            painter.drawRect(QRect(x, y, w, h))
+            painter.end()
+
+        self.live_screen_label.setPixmap(
+            pixmap.scaled(
+                self.live_screen_label.size(),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+        )
+        self.store_last_frame(img_arr)
+
+    def update_static_captured_region(self):
+        # Display the static captured image of the selected region
+        if not self.session_data.temp_chessboard_image:
+            print("No captured image found.")
+            return
+
+        img_path = self.session_data.temp_chessboard_image
+        if not os.path.exists(img_path):
+            print(f"Image path does not exist: {img_path}")
+            return
+
+        img = cv2.imread(img_path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert from BGR to RGB
         height, width, _ = img.shape
         bytes_per_line = 3 * width
         q_img = QImage(img.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
-
-        # Scale and display in QLabel
         pixmap = QPixmap.fromImage(q_img)
-        self.screen_label.setPixmap(
+
+        self.static_screen_label.setPixmap(
             pixmap.scaled(
-                self.screen_label.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+                self.static_screen_label.size(),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
             )
         )
 
-    def get_monitor_list(self):
-        """Detect available monitors and return a list of monitor names."""
-        with mss.mss() as sct:
-            return [f"Monitor {i}" for i in range(1, len(sct.monitors))]
+    def update_overlay(self, region):
+        # Force a screen update when the region changes
+        if region and self.capture_checkbox.isChecked():
+            self.update_live_screen(self.last_frame)
+
+    def store_last_frame(self, img_arr):
+        self.last_frame = img_arr
 
     def update_monitor(self, index):
-        """Update the monitor used for screen capture."""
-        self.screen_capture.monitor_index = index + 1
+        self.screen_capture.set_monitor(index + 1)
 
     def update_fps(self, value):
-        """Update the FPS value for screen capture."""
-        self.screen_capture._timer.setInterval(int(1000 / value))
+        self.screen_capture.set_fps(value)
 
-    def toggle_screen_capture(self, enabled):
-        """Enable or disable screen capturing."""
-        if enabled:
-            self.screen_capture.start_capturing()
+    def toggle_screen_capture(self, live):
+        if live:
+            self.live_screen_label.setVisible(True)
+            self.static_screen_label.setVisible(False)
+            self.screen_capture.start_recording()
         else:
-            self.screen_capture.stop_capturing()
+            self.live_screen_label.setVisible(False)
+            self.static_screen_label.setVisible(True)
+            self.screen_capture.stop_recording()
+
+    def _select_chessboard_region(self):
+        selector = ScreenRegionSelector(self.screen_capture.get_monitor())
+        result = selector.exec()
+
+        if result == QDialog.DialogCode.Accepted:
+            selected_area = selector.get_selected_region()
+            print("Selected Chessboard Area:", selected_area)
+
+            if selected_area:
+                x, y, w, h = selected_area
+                img_path = self.screen_capture.capture_static_image(x, y, w, h)
+                self.session_data.selected_region = selected_area
+                self.session_data.temp_chessboard_image = img_path
+                self.update_static_captured_region()

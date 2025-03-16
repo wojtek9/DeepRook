@@ -1,16 +1,18 @@
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
-
 from src.gui.controlsview.ControlsView import ControlsView
 from src.gui.logview.LogView import LogView
 from src.gui.rookception.RookceptionView import RookceptionView
 from src.gui.userscreen.UserScreenView import UserScreenView
+from src.logger.AppLogger import AppLogger
+from src.session.SessionData import SessionData
 from src.utils import uiutils
 
 
 class CentralWidget(QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent, session_data: SessionData):
         super().__init__(parent)
+
+        self.session_data = session_data
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
@@ -21,12 +23,12 @@ class CentralWidget(QWidget):
         self.views_layout.setSpacing(0)
 
         # Controls View
-        self.controls_view = ControlsView()
+        self.controls_view = ControlsView(session_data=session_data)
         # self.controls_view.setStyleSheet("border: 1px solid gray; padding: 5px;")
         self.controls_view.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         # User Screen View
-        self.user_screen_view = UserScreenView()
+        self.user_screen_view = UserScreenView(session_data=session_data)
         self.user_screen_view.setMinimumSize(320, 240)
         # self.user_screen_view.setStyleSheet("border: 1px solid gray; padding: 5px;")
         self.user_screen_view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -52,3 +54,5 @@ class CentralWidget(QWidget):
         self.views_layout.addWidget(right_container, stretch=1)
 
         self.main_layout.addLayout(self.views_layout)
+
+        AppLogger.info("Application started.")

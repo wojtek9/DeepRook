@@ -21,7 +21,7 @@ class ChessBot:
     def shutdown(self):
         AppLogger.info("Kill switch - Stopping bot...")
         self.running = False
-        sys.exit(0)
+        # sys.exit(0)
 
     def play_game(self):
         """Starts the bot and plays the game until completion."""
