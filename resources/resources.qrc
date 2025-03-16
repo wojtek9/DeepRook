@@ -1,7 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file alias="app_logo.ico">icons/app_logo.ico</file>
-        <file alias="app_logo.png">icons/app_logo.png</file>
         <file alias="app_logo_1024.png">icons/app_logo_1024x1024.png</file>
+        <file alias="Rookception.h5">models/CNN/RookceptionCNN_V1.h5</file>
     </qresource>
 </RCC>

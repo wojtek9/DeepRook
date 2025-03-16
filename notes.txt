@@ -1,1 +1,9 @@
+update reqs:
+pipreqs . --force
+
+update resources:
 pyside6-rcc .\resources\resources.qrc -o .\resources\resources_qrc.py
+
+build:
+pyinstaller --onefile --windowed --name=DeepRook src/main.py
+pyinstaller --clean .\DeepRook.spec

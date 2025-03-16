@@ -15,9 +15,14 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("DeepRook")
         self.setWindowIcon(QIcon(":/app_logo.ico"))
         self.setGeometry(560, 240, 800, 600)
+        self.setMinimumSize(735, 480)
 
         self.menu_bar = MenuBar(app=app, parent=self)
         self.setMenuBar(self.menu_bar)
 
         self.central_widget = CentralWidget(self)
         self.setCentralWidget(self.central_widget)
+
+    # def resizeEvent(self, event):
+    #     super().resizeEvent(event)
+    #     print(self.size())
