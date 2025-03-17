@@ -8,6 +8,7 @@ from src.gui.MainWindow import MainWindow
 from resources import resources_qrc  # noqa: F401
 from src.session.SessionData import SessionData
 
+# Remove?:
 myappid = "com.deeprook.app"
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
