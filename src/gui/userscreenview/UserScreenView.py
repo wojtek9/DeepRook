@@ -1,4 +1,5 @@
 import os
+import threading
 
 import cv2
 from PySide6.QtWidgets import (
@@ -17,8 +18,11 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QImage, QPixmap, QPainter, QPen
 from PySide6.QtCore import Qt, QRect
 
+from src.CNNlayer.Rookception import Rookception
+from src.bot.ChessBot import ChessBot
 from src.gui.userscreenview.ScreenCapture import ScreenCapture
 from src.gui.userscreenview.ScreenRegionSelector import ScreenRegionSelector
+from src.logger.AppLogger import AppLogger
 from src.session.SessionData import SessionData
 
 
@@ -29,55 +33,79 @@ class UserScreenView(QWidget):
         self.session_data = session_data
         self.session_data.selectedRegionChanged.connect(self.update_overlay)
 
+        self._rookception: Rookception | None = None
+
         # Screen Capture instance
         self.screen_capture = ScreenCapture(self)
         self.screen_capture.frameCaptured.connect(self.update_live_screen)  # Listen for frames
         self.last_frame = None
 
-        # Layout setup
-        self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.setSpacing(0)
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
 
-        # Control Panel Setup
-        self.control_panel = QGroupBox("Screen Capture Controls")
-        self.control_layout = QFormLayout(self.control_panel)
+        # Screen Control Panel
+        self.screen_control_panel = QGroupBox("Screen Capture Controls")
+        self.screen_control_layout = QFormLayout(self.screen_control_panel)
 
         self.select_region_btn = QPushButton("Mark Chessboard Region")
         self.select_region_btn.clicked.connect(self._select_chessboard_region)
-        self.control_layout.addRow("Select Region:", self.select_region_btn)
+        self.screen_control_layout.addRow("Select Region:", self.select_region_btn)
 
         self.monitor_selector = QComboBox()
         self.monitor_selector.addItems(self.screen_capture.get_monitor_list())
         self.monitor_selector.currentIndexChanged.connect(self.update_monitor)
-        self.control_layout.addRow("Monitor:", self.monitor_selector)
+        self.screen_control_layout.addRow("Monitor:", self.monitor_selector)
 
         self.fps_selector = QSpinBox()
         self.fps_selector.setRange(1, 60)
         self.fps_selector.setValue(10)
         self.fps_selector.valueChanged.connect(self.update_fps)
-        self.control_layout.addRow("FPS:", self.fps_selector)
+        self.screen_control_layout.addRow("FPS:", self.fps_selector)
 
         self.capture_checkbox = QCheckBox("Enable Screen Capture")
         self.capture_checkbox.setChecked(False)
         self.capture_checkbox.toggled.connect(self.toggle_screen_capture)
-        self.control_layout.addRow("Live Capture:", self.capture_checkbox)
+        self.screen_control_layout.addRow("Live Capture:", self.capture_checkbox)
 
-        self.layout.addWidget(self.control_panel)
+        # Engine Control Panel
+        self.engine_control_panel = QGroupBox("Engine Controls")
+        self.engine_control_layout = QVBoxLayout(self.engine_control_panel)
+        self.get_best_move_btn = QPushButton("Get Best Move")
+        self.get_best_move_btn.clicked.connect(self._on_get_next_move_clicked)
+        self.engine_control_layout.addWidget(self.get_best_move_btn)
+
+        self.main_layout.addWidget(self.screen_control_panel)
+        self.main_layout.addWidget(self.engine_control_panel)
 
         # Label for displaying screen capture
         self.live_screen_label = QLabel(self)
         self.live_screen_label.setVisible(False)
         self.live_screen_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.live_screen_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.layout.addWidget(self.live_screen_label)
+        self.main_layout.addWidget(self.live_screen_label)
 
         # Label for displaying captured region if screen capture is turned off
         self.static_screen_label = QLabel(self)
         self.static_screen_label.setVisible(True)
         self.static_screen_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.static_screen_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.layout.addWidget(self.static_screen_label)
+        self.main_layout.addWidget(self.static_screen_label)
+
+        self._initialize_rookception(session_data)
+
+
+    def _load_rookception(self, model_path):
+        self._rookception = Rookception(model_path)
+        AppLogger.debug("CNN loaded")
+
+    def _initialize_rookception(self, session_data):
+        thread = threading.Thread(target=self._load_rookception, args=(session_data.model_path,))
+        thread.daemon = True
+        thread.start()
+
+    def set_cnn(self, cnn):
+        self._rookception = cnn
 
     def update_live_screen(self, img_arr):
         # Update Label with the new screen frame and overlay selection
@@ -167,3 +195,11 @@ class UserScreenView(QWidget):
                 self.session_data.selected_region = selected_area
                 self.session_data.temp_chessboard_image = img_path
                 self.update_static_captured_region()
+
+    def _on_get_next_move_clicked(self):
+        board_region = self.session_data.selected_region
+        board_img_path = self.session_data.temp_chessboard_image
+        if not self._rookception or not board_region or not board_img_path:
+            return
+
+        self._rookception.predict_board(board_img_path)

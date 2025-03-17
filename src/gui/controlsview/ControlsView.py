@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QToolButton,
+    QDoubleSpinBox,
 )
 
 from src.bot.ChessBot import ChessBot
@@ -24,14 +25,15 @@ class ControlsView(QWidget):
         super().__init__(parent)
 
         self.session_data = session_data
+        self.bot = ChessBot(session_data=session_data)
 
         self.settings = {
             "turn": "",
             "start_delay": 0,
             "random_mouse_movement": False,
             "random_move_delay": False,
-            "min_move_delay": 0,
-            "max_move_delay": 5,
+            "min_move_delay": 0.0,
+            "max_move_delay": 5.0,
             "enable_debug_logging": False,
             "engine": "stockfish",
             "engine_rating": 3000,
@@ -45,10 +47,10 @@ class ControlsView(QWidget):
         scroll_area.setWidgetResizable(True)
         scroll_area.setStyleSheet(
             """
-            QScrollArea {
-                border: none;
-            }
-        """
+                QScrollArea {
+                    border: none;
+                }
+            """
         )
         content_widget = QWidget()
         content_layout = QVBoxLayout(content_widget)
@@ -56,46 +58,49 @@ class ControlsView(QWidget):
 
         self.advanced_settings_visible = False
 
-        # Start/Stop Section
-        start_section = QGroupBox("Bot Controls")
-        start_layout = QVBoxLayout()
-        # start_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        self.start_button = QPushButton("Start Bot")
-        self.start_button.clicked.connect(self._on_start_btn_clicked)
-        start_layout.addWidget(self.start_button)
-
+        settings_section = QGroupBox("Settings")
+        settings_layout = QVBoxLayout()
         self.color_group = QButtonGroup()
         self.white_button = QRadioButton("Play as White")
         self.black_button = QRadioButton("Play as Black")
         self.white_button.setChecked(True)
         self.color_group.addButton(self.white_button)
         self.color_group.addButton(self.black_button)
-        start_layout.addWidget(self.white_button)
-        start_layout.addWidget(self.black_button)
+        settings_layout.addWidget(self.white_button)
+        settings_layout.addWidget(self.black_button)
+
+        settings_section.setLayout(settings_layout)
+        content_layout.addWidget(settings_section)
+
+        # Start/Stop Section
+        bot_section = QGroupBox("Bot Controls")
+        bot_layout = QVBoxLayout()
+        # start_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self.start_button = QPushButton("Start Bot")
+        self.start_button.clicked.connect(self._on_start_btn_clicked)
+        bot_layout.addWidget(self.start_button)
 
         start_delay_layout = QFormLayout()
         self.start_delay_input = QSpinBox()
         self.start_delay_input.setSuffix(" sec")
         self.start_delay_input.setRange(0, 10)
         start_delay_layout.addRow("Start Delay:", self.start_delay_input)
-        start_layout.addLayout(start_delay_layout)
-        start_section.setLayout(start_layout)
-        content_layout.addWidget(start_section)
+        bot_layout.addLayout(start_delay_layout)
 
-        # Movement Section
-        movement_section = QGroupBox("Human-like Behavior")
         movement_layout = QVBoxLayout()
         self.human_movement_checkbox = QCheckBox("Human Mouse Movement")
         self.random_move_delay_checkbox = QCheckBox("Randomized Move Delay")
         self.random_move_delay_checkbox.clicked.connect(self._on_random_move_time_clicked)
 
-        self.min_move_delay = QSpinBox()
+        self.min_move_delay = QDoubleSpinBox()
         self.min_move_delay.editingFinished.connect(self._update_move_delay_settings)
-        self.min_move_delay.setRange(0, 20)
+        self.min_move_delay.setRange(0.0, 20.0)
+        self.min_move_delay.setDecimals(1)
         self.min_move_delay.setSuffix(" sec")
-        self.max_move_delay = QSpinBox()
+        self.max_move_delay = QDoubleSpinBox()
         self.max_move_delay.editingFinished.connect(self._update_move_delay_settings)
-        self.max_move_delay.setRange(0, 20)
+        self.max_move_delay.setRange(0.0, 20.0)
+        self.max_move_delay.setDecimals(1)
         self.max_move_delay.setSuffix(" sec")
 
         self.move_delay_layout = QFormLayout()
@@ -105,8 +110,39 @@ class ControlsView(QWidget):
         movement_layout.addWidget(self.human_movement_checkbox)
         movement_layout.addWidget(self.random_move_delay_checkbox)
         movement_layout.addLayout(self.move_delay_layout)
-        movement_section.setLayout(movement_layout)
-        content_layout.addWidget(movement_section)
+
+        bot_layout.addLayout(movement_layout)
+        bot_section.setLayout(bot_layout)
+        content_layout.addWidget(bot_section)
+
+        # Movement Section
+        # movement_section = QGroupBox("Human-like Behavior")
+        # movement_layout = QVBoxLayout()
+        # self.human_movement_checkbox = QCheckBox("Human Mouse Movement")
+        # self.random_move_delay_checkbox = QCheckBox("Randomized Move Delay")
+        # self.random_move_delay_checkbox.clicked.connect(self._on_random_move_time_clicked)
+        #
+        # self.min_move_delay = QDoubleSpinBox()
+        # self.min_move_delay.editingFinished.connect(self._update_move_delay_settings)
+        # self.min_move_delay.setRange(0.0, 20.0)
+        # self.min_move_delay.setDecimals(1)
+        # self.min_move_delay.setSuffix(" sec")
+        # self.max_move_delay = QDoubleSpinBox()
+        # self.max_move_delay.editingFinished.connect(self._update_move_delay_settings)
+        # self.max_move_delay.setRange(0.0, 20.0)
+        # self.max_move_delay.setDecimals(1)
+        # self.max_move_delay.setSuffix(" sec")
+        #
+        # self.move_delay_layout = QFormLayout()
+        # self.move_delay_layout.addRow("Min Move Delay:", self.min_move_delay)
+        # self.move_delay_layout.addRow("Max Move Delay:", self.max_move_delay)
+        #
+        # movement_layout.addWidget(self.human_movement_checkbox)
+        # movement_layout.addWidget(self.random_move_delay_checkbox)
+        # movement_layout.addLayout(self.move_delay_layout)
+        #
+        # movement_section.setLayout(movement_layout)
+        # content_layout.addWidget(movement_section)
 
         # Future Expansion Section
         expansion_section = QGroupBox("Additional Settings")
@@ -158,7 +194,8 @@ class ControlsView(QWidget):
         self._toggle_move_delay_inputs(False)
 
     def _on_start_btn_clicked(self):
-        bot = ChessBot()
+        # self.bot.play_game()
+        pass
 
     def _on_advanced_settings_toggle_btn_clicked(self):
         self.advanced_settings_visible = not self.advanced_settings_visible
@@ -174,7 +211,7 @@ class ControlsView(QWidget):
             self.max_move_delay.setValue(max_move_delay)
             self._update_move_delay_settings()
         else:
-            self.max_move_delay.setValue(0)
+            self.max_move_delay.setValue(0.0)
         self._toggle_move_delay_inputs(is_checked)
 
     def _update_move_delay_settings(self):

@@ -1,25 +1,42 @@
 from PySide6.QtCore import QObject, Signal
 from typing import Optional, Tuple
 
+from src.core.botdata.BotParams import BotParams
+
 
 class SessionData(QObject):
     selectedRegionChanged = Signal(tuple)
     gameStateChanged = Signal(str)
     botEnabledChanged = Signal(bool)
+    botParamsChanged = Signal(dict)
     engineChanged = Signal(str)
     engineRatingChanged = Signal(int)
     humanLikeMovementsChanged = Signal(bool)
     tempChessboardImageChanged = Signal(str)
+    playAsWhiteChanged = Signal(bool)
 
     def __init__(self):
         super().__init__()
+        self.bot_params: BotParams = BotParams()
         self._selected_region: Optional[Tuple[int, int, int, int]] = None
+        self._play_as_white: bool = True
         self._game_state: str = "Not Started"
         self._bot_enabled: bool = False
         self._selected_engine: str = "Stockfish"
         self._engine_rating: int = 1200
         self._human_like_movements: bool = True
         self._temp_chessboard_image: Optional[str] = None
+        self._model_path: str = ""
+
+    @property
+    def play_as_white(self):
+        return self._play_as_white
+
+    @play_as_white.setter
+    def play_as_white(self, value: bool):
+        if self.play_as_white != value:
+            self.play_as_white = value
+            self.playAsWhiteChanged.emit(value)
 
     @property
     def selected_region(self):
@@ -90,3 +107,12 @@ class SessionData(QObject):
         if self._temp_chessboard_image != value:
             self._temp_chessboard_image = value
             self.tempChessboardImageChanged.emit(value)
+
+    @property
+    def model_path(self):
+        return self._model_path
+
+    @model_path.setter
+    def model_path(self, value: str):
+        if self._model_path != value:
+            self._model_path = value

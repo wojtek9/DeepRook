@@ -14,7 +14,7 @@ class MainWindow(QMainWindow):
         self.session_data = session_data
 
         self.setWindowTitle("DeepRook")
-        self.setWindowIcon(QIcon(":/app_logo.ico"))
+        self.setWindowIcon(QIcon(":/icn/app_logo.ico"))
         self.setGeometry(560, 240, 800, 600)
         self.setMinimumSize(735, 480)
 
