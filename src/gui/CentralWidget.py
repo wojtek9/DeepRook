@@ -2,7 +2,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
 from src.gui.controlsview.ControlsView import ControlsView
 from src.gui.logview.LogView import LogView
 from src.gui.rookception.RookceptionView import RookceptionView
-from src.gui.userscreen.UserScreenView import UserScreenView
+from src.gui.userscreenview.UserScreenView import UserScreenView
 from src.logger.AppLogger import AppLogger
 from src.session.SessionData import SessionData
 from src.utils import uiutils

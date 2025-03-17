@@ -67,6 +67,7 @@ class ControlsView(QWidget):
         self.color_group = QButtonGroup()
         self.white_button = QRadioButton("Play as White")
         self.black_button = QRadioButton("Play as Black")
+        self.white_button.setChecked(True)
         self.color_group.addButton(self.white_button)
         self.color_group.addButton(self.black_button)
         start_layout.addWidget(self.white_button)

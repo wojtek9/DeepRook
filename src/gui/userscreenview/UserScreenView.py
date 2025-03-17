@@ -17,8 +17,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QImage, QPixmap, QPainter, QPen
 from PySide6.QtCore import Qt, QRect
 
-from src.gui.userscreen.ScreenCapture import ScreenCapture
-from src.gui.userscreen.ScreenRegionSelector import ScreenRegionSelector
+from src.gui.userscreenview.ScreenCapture import ScreenCapture
+from src.gui.userscreenview.ScreenRegionSelector import ScreenRegionSelector
 from src.session.SessionData import SessionData
 
 
