@@ -22,7 +22,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setApplicationName("DeepRook")
     app.setWindowIcon(QIcon(":/icn/app_logo.ico"))
-    app.setStyle("Fusion")
+    #app.setStyle("Fusion")
 
     session_data = SessionData()
     prepare_app(session_data)

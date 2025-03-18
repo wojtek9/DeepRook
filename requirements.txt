@@ -7,3 +7,4 @@ Pillow
 pyautogui
 PySide6
 tensorflow
+pyqtdarktheme
