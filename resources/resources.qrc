@@ -4,6 +4,9 @@
         <file alias="app_logo_1024.png">icons/app_logo_1024x1024.png</file>
         <file alias="menu_settings_icon">icons/menu_settings_icon.svg</file>
         <file alias="menu_help_icon">icons/menu_help_icon.svg</file>
+        <file alias="delete_icon">icons/delete_icon.svg</file>
+        <file alias="checkmark_icon">icons/checkmark_icon.svg</file>
+        <file alias="block_icon">icons/block_icon.svg</file>
     </qresource>
     <qresource prefix="/models">
         <file alias="Rookception.h5">models/CNN/RookceptionCNN_V1.h5</file>
