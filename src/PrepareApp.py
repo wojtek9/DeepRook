@@ -1,5 +1,6 @@
 from src.core.ConfigManager import ConfigManager
-from src.core.botdata.BotParams import BotParams
+from src.core.dataclasses.BotParams import BotParams
+from src.core.enums.Hotkeys import Hotkey
 from src.session.SessionData import SessionData
 from src.utils import utils
 
@@ -9,9 +10,6 @@ def prepare_app():
     config_manager = ConfigManager()
     config = config_manager.config_data
 
-    session.selected_region = config.get("selected_region", None)
-    session.play_as_white = config.get("play_as_white", True)
-    session.game_state = config.get("game_state", "Not Started")
     session.bot_enabled = config.get("bot_enabled", False)
     session.selected_engine = config.get("engine", "Stockfish")
     session.engine_rating = config.get("engine_rating", 3000)
@@ -32,5 +30,16 @@ def prepare_app():
         auto_detection=bot_params_config.get("auto_detection", False),
         auto_move=bot_params_config.get("auto_move", False),
     )
+
+    session.hotkeys = {}
+    config_hotkeys = config.get("hotkeys", {})
+
+    for hotkey_name, keybind in config_hotkeys.items():
+        try:
+            hotkey_enum = Hotkey[hotkey_name]
+            session.hotkeys[hotkey_enum] = keybind
+        except KeyError:
+            pass
+
     print("config loaded")
     return session, config_manager

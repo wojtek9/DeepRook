@@ -1,7 +1,10 @@
+from dataclasses import asdict
+
 from PySide6.QtCore import QObject, Signal
 from typing import Optional, Tuple
 
-from src.core.botdata.BotParams import BotParams
+from src.core.dataclasses.BotParams import BotParams
+from src.core.enums.Hotkeys import Hotkey
 
 
 class SessionData(QObject):
@@ -17,10 +20,12 @@ class SessionData(QObject):
     autoDetectionChanged = Signal(bool)
     autoMoveChanged = Signal(bool)
     nextMoveChanged = Signal(str)
+    hotkeysUdapted = Signal()
 
     def __init__(self):
         super().__init__()
         self.bot_params: BotParams = BotParams()
+        self.hotkeys: dict[Hotkey, str] = {}
         self._selected_region: Optional[Tuple[int, int, int, int]] = None
         self._play_as_white: bool = True
         self._game_state: str = "Not Started"
@@ -30,6 +35,9 @@ class SessionData(QObject):
         self._temp_chessboard_image: Optional[str] = None
         self._model_path: str = ""
         self.__next_move: str = ""
+
+    def emit_hotkeys_updated(self):
+        self.hotkeysUdapted.emit()
 
     @property
     def play_as_white(self):

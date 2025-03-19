@@ -53,5 +53,5 @@ class ConfigManager:
         return self.config_data.get(key, default)
 
     def set_config(self, config_dict):
-        self.config_data.update(config_dict)
+        self.config_data = config_dict
         self.save_config()

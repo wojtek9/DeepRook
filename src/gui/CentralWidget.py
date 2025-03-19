@@ -1,4 +1,6 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
+
+from src.core.HotkeyListener import HotkeyListener
 from src.gui.controlsview.ControlsView import ControlsView
 from src.gui.logview.LogView import LogView
 from src.gui.rookception.RookceptionView import RookceptionView
@@ -25,6 +27,8 @@ class CentralWidget(QWidget):
         self.views_layout.setContentsMargins(0, 0, 0, 0)
         self.views_layout.setSpacing(0)
 
+        self.hotkeys_listener = HotkeyListener(session_data)
+
         # Controls View
         self.controls_view = ControlsView(session_data=session_data)
         # self.controls_view.setStyleSheet("border: 1px solid gray; padding: 5px;")
@@ -34,7 +38,7 @@ class CentralWidget(QWidget):
         # middle_container = QWidget()
         # middle_layout = QVBoxLayout()
         # self.status_view = StatusView(session_data=session_data)
-        self.user_screen_view = UserScreenView(session_data=session_data)
+        self.user_screen_view = UserScreenView(session_data=session_data, hotkey_listener=self.hotkeys_listener)
         self.user_screen_view.setMinimumSize(320, 240)
         # self.user_screen_view.setStyleSheet("border: 1px solid gray; padding: 5px;")
         self.user_screen_view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)

@@ -42,13 +42,9 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         config = {
-            "selected_region": self.session_data.selected_region,
-            "play_as_white": self.session_data.play_as_white,
-            "game_state": self.session_data.game_state,
             "bot_enabled": self.session_data.bot_enabled,
             "engine": self.session_data.selected_engine,
             "engine_rating": self.session_data.engine_rating,
-            "human_like_movements": self.session_data.human_like_movements,
             "temp_chessboard_image": self.session_data.temp_chessboard_image,
             "model_path": self.session_data.model_path,
             "bot_params": {
@@ -60,6 +56,7 @@ class MainWindow(QMainWindow):
                 "auto_detection": self.session_data.bot_params.auto_detection,
                 "auto_move": self.session_data.bot_params.auto_move,
             },
+            "hotkeys": {hotkey.name: self.session_data.hotkeys[hotkey] for hotkey in self.session_data.hotkeys},
         }
 
         self.config_manager.set_config(config)

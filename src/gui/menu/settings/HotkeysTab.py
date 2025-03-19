@@ -15,6 +15,7 @@ from PySide6.QtCore import Qt, Signal, QTimer
 
 from src.core.enums.Hotkeys import Hotkey
 from src.session.SessionData import SessionData
+from src.utils import utils
 
 
 class HotkeyRowAction(IntEnum):
@@ -165,7 +166,6 @@ class HotkeysTab(QWidget):
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         self.grid_layout = QGridLayout()
-        self.registered_hotkeys: dict[Hotkey, str] = {}
 
         self.hotkey_row_objs: list[HotkeyRowObject] = [
             HotkeyRowObject(description="Get Next Move From Engine", hotkey=Hotkey.GET_NEXT_MOVE),
@@ -175,6 +175,7 @@ class HotkeysTab(QWidget):
         ]
 
         self._setup_ui()
+        self.apply_saved_config()
         main_layout.addLayout(self.grid_layout)
 
     def _setup_ui(self):
@@ -186,8 +187,25 @@ class HotkeysTab(QWidget):
             self.grid_layout.addWidget(row_obj.block_btn, row, 3)
             self.grid_layout.addWidget(row_obj.clear_btn, row, 4)
 
+    def apply_saved_config(self):
+        if not self.session_data.hotkeys:
+            return
+
+        for row_obj in self.hotkey_row_objs:
+            saved_hotkey = self.session_data.hotkeys.get(row_obj.hotkey, "")
+
+            if saved_hotkey:
+                user_friendly_hotkey = utils.convert_to_user_friendly_hotkey(saved_hotkey)
+                row_obj.hotkey_bind = user_friendly_hotkey
+                row_obj.apply_line_edit_text_safe(user_friendly_hotkey)
+                row_obj.accept_btn.setEnabled(False)
+                row_obj.block_btn.setEnabled(True)
+                row_obj.clear_btn.setEnabled(True)
+
     def save_hotkeys_to_session(self):
-        pass
+        for row_obj in self.hotkey_row_objs:
+            converted_hotkey = utils.convert_to_keyboard_hotkey(row_obj.hotkey_bind.strip())
+            self.session_data.hotkeys[row_obj.hotkey] = converted_hotkey
 
     @staticmethod
     def clear_focused_widgets():
@@ -201,12 +219,15 @@ class HotkeysTab(QWidget):
 
     def hideEvent(self, event):
         self.clear_focused_widgets()
+        hotkeys_before = self.session_data.hotkeys.copy()
+
         for row_obj in self.hotkey_row_objs:
             row_obj.clear_focus()
             row_obj.line_edit.setText(row_obj.hotkey_bind)
-        self.save_hotkeys_to_session()
-        super().hideEvent(event)
 
-    def closeEvent(self, event):
-        print("here")
-        super().closeEvent(event)
+        self.save_hotkeys_to_session()
+
+        if hotkeys_before != self.session_data.hotkeys:
+            self.session_data.emit_hotkeys_updated()
+
+        super().hideEvent(event)

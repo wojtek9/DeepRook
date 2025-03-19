@@ -29,18 +29,6 @@ class ControlsView(QWidget):
 
         self.session_data.nextMoveChanged.connect(self._make_next_move)
 
-        self.settings = {
-            "turn": "",
-            "start_delay": 0,
-            "random_mouse_movement": False,
-            "random_move_delay": False,
-            "min_move_delay": 0.0,
-            "max_move_delay": 5.0,
-            "enable_debug_logging": False,
-            "engine": "stockfish",
-            "engine_rating": 3000,
-        }
-
         # Main layout with scroll area
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
@@ -65,6 +53,7 @@ class ControlsView(QWidget):
         self.color_group = QButtonGroup()
         self.white_button = QRadioButton("Play as White")
         self.black_button = QRadioButton("Play as Black")
+        self.white_button.setChecked(True)
         self.color_group.addButton(self.white_button)
         self.color_group.addButton(self.black_button)
         self.color_group.buttonClicked.connect(self.update_game_color)
@@ -207,9 +196,6 @@ class ControlsView(QWidget):
         self._apply_config()
 
     def _apply_config(self):
-        self.white_button.setChecked(True)
-        # self.white_button.setChecked(self.session_data.play_as_white)
-        # self.black_button.setChecked(not self.session_data.play_as_white)
         self.auto_detection_checkbox.setChecked(self.session_data.auto_detection)
         self.auto_move_checkbox.setChecked(self.session_data.auto_move)
         self.human_movement_checkbox.setChecked(self.session_data.human_like_movements)
@@ -247,7 +233,7 @@ class ControlsView(QWidget):
 
     def _on_random_move_time_clicked(self):
         is_checked = self.random_move_delay_checkbox.isChecked()
-        max_move_delay = self.settings["max_move_delay"]
+        max_move_delay = self.session_data.bot_params.max_move_delay
         if is_checked:
             self.max_move_delay_spbox.setValue(max_move_delay)
             self._update_move_delay_settings()

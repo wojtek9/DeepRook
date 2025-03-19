@@ -22,6 +22,8 @@ from PySide6.QtCore import Qt, QRect
 
 from src.CNNlayer.Rookception import Rookception
 from src.ChessEngine.stockfish.StockfishLayer import StockfishLayer
+from src.core.HotkeyListener import HotkeyListener
+from src.core.enums.Hotkeys import Hotkey
 from src.gui.userscreenview.ScreenCapture import ScreenCapture
 from src.gui.userscreenview.ScreenRegionSelector import ScreenRegionSelector
 from src.logger.AppLogger import AppLogger
@@ -30,11 +32,14 @@ from src.utils import utils
 
 
 class UserScreenView(QWidget):
-    def __init__(self, session_data: SessionData, parent=None):
+    def __init__(self, session_data: SessionData, hotkey_listener: HotkeyListener, parent=None):
         super().__init__(parent)
 
         self.session_data = session_data
         self.session_data.selectedRegionChanged.connect(self.update_overlay)
+
+        self.hotkey_listener = hotkey_listener
+        self.hotkey_listener.hotkeyTriggered.connect(self._hotkey_triggered)
 
         self._rookception: Rookception | None = None
         self._engine: StockfishLayer | None = None
@@ -131,6 +136,11 @@ class UserScreenView(QWidget):
 
     def _apply_config(self):
         pass
+
+    def _hotkey_triggered(self, hotkey: Hotkey):
+        match hotkey:
+            case Hotkey.MAKE_NEXT_MOVE:
+                self.update_next_move()
 
     def _init_modules(self, model_path):
         self._engine = StockfishLayer()

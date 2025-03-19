@@ -38,6 +38,60 @@ def get_turn_from_play_as_white(play_as_white: bool):
     return "w" if play_as_white else "b"
 
 
+def convert_to_keyboard_hotkey(hotkey_str: str) -> str:
+    if not hotkey_str.strip():
+        return ""
+
+    key_map = {
+        "CTRL": "ctrl",
+        "SHIFT": "shift",
+        "ALT": "alt",
+        "META": "command",
+        "UP": "up",
+        "DOWN": "down",
+        "LEFT": "left",
+        "RIGHT": "right",
+        "ENTER": "enter",
+        "RETURN": "enter",
+        "ESC": "esc",
+        "SPACE": "space",
+        "TAB": "tab",
+        "BACKSPACE": "backspace",
+        "DELETE": "delete",
+    }
+
+    keys = hotkey_str.upper().split(" + ")
+    converted_keys = [key_map.get(key, key.lower()) for key in keys]
+    return "+".join(converted_keys)
+
+
+def convert_to_user_friendly_hotkey(keyboard_str: str) -> str:
+    if not keyboard_str.strip():
+        return ""
+
+    key_map = {
+        "ctrl": "CTRL",
+        "shift": "SHIFT",
+        "alt": "ALT",
+        "command": "META",
+        "win": "META",
+        "up": "UP",
+        "down": "DOWN",
+        "left": "LEFT",
+        "right": "RIGHT",
+        "enter": "ENTER",
+        "esc": "ESC",
+        "space": "SPACE",
+        "tab": "TAB",
+        "backspace": "BACKSPACE",
+        "delete": "DELETE",
+    }
+
+    keys = keyboard_str.lower().split("+")
+    converted_keys = [key_map.get(key, key.upper()) for key in keys]
+    return " + ".join(converted_keys)
+
+
 def board_to_fen(board_state: ndarray, turn="w", castling_rights="KQkq", en_passant="-", halfmove="0", fullmove="1"):
     # Convert board state (8x8 numpy array) into FEN string including castling rights and en passant
 
