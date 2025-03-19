@@ -1,17 +1,19 @@
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QMainWindow, QApplication
 
+from src.core.ConfigManager import ConfigManager
 from src.gui.CentralWidget import CentralWidget
 from src.gui.menu.MenuBar import MenuBar
 from src.session.SessionData import SessionData
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, app: QApplication, session_data: SessionData):
+    def __init__(self, app: QApplication, session_data: SessionData, config_manager: ConfigManager):
         super().__init__()
 
         self.app = app
         self.session_data = session_data
+        self.config_manager = config_manager
 
         self.setWindowTitle("DeepRook")
         self.setWindowIcon(QIcon(":/icn/app_logo.ico"))
@@ -39,4 +41,26 @@ class MainWindow(QMainWindow):
             super().mousePressEvent(event)
 
     def closeEvent(self, event):
-        pass
+        config = {
+            "selected_region": self.session_data.selected_region,
+            "play_as_white": self.session_data.play_as_white,
+            "game_state": self.session_data.game_state,
+            "bot_enabled": self.session_data.bot_enabled,
+            "engine": self.session_data.selected_engine,
+            "engine_rating": self.session_data.engine_rating,
+            "human_like_movements": self.session_data.human_like_movements,
+            "temp_chessboard_image": self.session_data.temp_chessboard_image,
+            "model_path": self.session_data.model_path,
+            "bot_params": {
+                "start_delay": self.session_data.bot_params.start_delay,
+                "human_mouse_movements": self.session_data.bot_params.human_mouse_movements,
+                "random_move_delay": self.session_data.bot_params.random_move_delay,
+                "min_move_delay": self.session_data.bot_params.min_move_delay,
+                "max_move_delay": self.session_data.bot_params.max_move_delay,
+                "auto_detection": self.session_data.bot_params.auto_detection,
+                "auto_move": self.session_data.bot_params.auto_move,
+            },
+        }
+
+        self.config_manager.set_config(config)
+        event.accept()

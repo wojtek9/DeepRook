@@ -1,5 +1,4 @@
 colorama
-keyboard
 mss
 numpy
 opencv_python
@@ -7,4 +6,4 @@ Pillow
 pyautogui
 PySide6
 tensorflow
-pyqtdarktheme
+stockfish

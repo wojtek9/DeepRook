@@ -1,4 +1,4 @@
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QMenuBar, QMenu, QApplication
 
 from src.gui.menu.settings.SettingsWindow import SettingsWindow
@@ -12,14 +12,16 @@ class MenuBar(QMenuBar):
 
         # Settings Menu
         self.settings_window = SettingsWindow(app=app, parent=self)
-        settings_menu = QMenu("Settings", self)
-        settings_action = QAction("Open Settings", self)
+        settings_menu = QMenu("", self)
+        settings_menu.setIcon(QIcon(":/icn/menu_settings_icon"))
+        settings_action = QAction("Settings", self)
         settings_action.triggered.connect(self.open_settings)
         settings_menu.addAction(settings_action)
         self.addMenu(settings_menu)
 
         # Help Menu
-        help_menu = QMenu("Help", self)
+        help_menu = QMenu("", self)
+        help_menu.setIcon(QIcon(":/icn/menu_help_icon"))
         help_action = QAction("About", self)
         help_action.triggered.connect(self.show_about)
         help_menu.addAction(help_action)

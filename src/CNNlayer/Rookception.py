@@ -13,28 +13,28 @@ class Rookception:
         self.img_size = (64, 64)
 
     def extract_squares(self, image_path):
-        """Extracts 64 squares from a chessboard image and saves them."""
-        image = Image.open(image_path)
-        square_size = 720 // 8  # 90 pixels per square
-        squares = []
+        # Extracts 64 squares from a chessboard image
+        image = Image.open(image_path).convert("RGB")
+        width, height = image.size
+
+        square_width = width // 8
+        square_height = height // 8
+
+        # Preallocate NumPy array
+        squares = np.zeros((8, 8, self.img_size[0], self.img_size[1], 3), dtype=np.float32)
 
         for row in range(8):
-            row_squares = []
             for col in range(8):
-                left = col * square_size
-                top = row * square_size
-                right = (col + 1) * square_size
-                bottom = (row + 1) * square_size
+                left, top = col * square_width, row * square_height
+                right, bottom = (col + 1) * square_width, (row + 1) * square_height
 
-                square_img = image.crop((left, top, right, bottom)).convert("RGB")
-                square_img = square_img.resize(self.img_size)  # Resize for CNN
-                square_array = np.array(square_img) / 255.0  # Normalize
+                # Extract, resize, normalize
+                squares[row, col] = np.array(
+                    image.crop((left, top, right, bottom))
+                    .resize(self.img_size), dtype=np.float32
+                ) / 255.0
 
-                row_squares.append(square_array)
-
-            squares.append(row_squares)
-
-        return np.array(squares)  # Shape (8, 8, 64, 64, 3)
+        return squares  # Shape: (8, 8, img_size[0], img_size[1], 3)
 
     def predict_board(self, image_path):
         # Recognizes all pieces on the chessboard using batch prediction

@@ -36,6 +36,8 @@ class ScreenRegionSelector(QDialog):
         self.end_pos = None
         self.selection_rect = QRect()
 
+        self.line_thickness = 2
+
     def capture_screen(self):
         # Capture the selected monitor using mss and convert to QPixmap
         with mss.mss() as sct:
@@ -64,7 +66,7 @@ class ScreenRegionSelector(QDialog):
         # Draw selection rectangle if user is selecting
         if not self.selection_rect.isNull():
             painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.setPen(QPen(QColor(255, 0, 0), 1))  # Red border
+            painter.setPen(QPen(QColor(255, 0, 0), self.line_thickness))  # Red border
             painter.drawRect(self.selection_rect)
 
     def mousePressEvent(self, event):

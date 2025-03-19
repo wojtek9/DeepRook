@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -26,6 +26,8 @@ class ControlsView(QWidget):
 
         self.session_data = session_data
         self.bot = ChessBot(session_data=session_data)
+
+        self.session_data.nextMoveChanged.connect(self._make_next_move)
 
         self.settings = {
             "turn": "",
@@ -58,25 +60,25 @@ class ControlsView(QWidget):
 
         self.advanced_settings_visible = False
 
-        settings_section = QGroupBox("Settings")
-        settings_layout = QVBoxLayout()
+        game_settings_section = QGroupBox("Game Settings")
+        game_settings_layout = QVBoxLayout()
         self.color_group = QButtonGroup()
         self.white_button = QRadioButton("Play as White")
         self.black_button = QRadioButton("Play as Black")
-        self.white_button.setChecked(True)
         self.color_group.addButton(self.white_button)
         self.color_group.addButton(self.black_button)
-        settings_layout.addWidget(self.white_button)
-        settings_layout.addWidget(self.black_button)
+        self.color_group.buttonClicked.connect(self.update_game_color)
+        game_settings_layout.addWidget(self.white_button)
+        game_settings_layout.addWidget(self.black_button)
 
-        settings_section.setLayout(settings_layout)
-        content_layout.addWidget(settings_section)
+        game_settings_section.setLayout(game_settings_layout)
+        content_layout.addWidget(game_settings_section)
 
         # Start/Stop Section
         bot_section = QGroupBox("Bot Controls")
         bot_layout = QVBoxLayout()
         # start_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        self.start_button = QPushButton("Start Bot")
+        self.start_button = QPushButton("Activate")
         self.start_button.clicked.connect(self._on_start_btn_clicked)
         bot_layout.addWidget(self.start_button)
 
@@ -88,25 +90,32 @@ class ControlsView(QWidget):
         bot_layout.addLayout(start_delay_layout)
 
         movement_layout = QVBoxLayout()
+        self.auto_detection_checkbox = QCheckBox("Auto Detection")
+        self.auto_detection_checkbox.clicked.connect(self._auto_detection_changed)
+        self.auto_move_checkbox = QCheckBox("Auto Move")
+        self.auto_move_checkbox.clicked.connect(self._auto_move_changed)
         self.human_movement_checkbox = QCheckBox("Human Mouse Movement")
+        self.human_movement_checkbox.clicked.connect(self._human_movement_changed)
         self.random_move_delay_checkbox = QCheckBox("Randomized Move Delay")
         self.random_move_delay_checkbox.clicked.connect(self._on_random_move_time_clicked)
 
-        self.min_move_delay = QDoubleSpinBox()
-        self.min_move_delay.editingFinished.connect(self._update_move_delay_settings)
-        self.min_move_delay.setRange(0.0, 20.0)
-        self.min_move_delay.setDecimals(1)
-        self.min_move_delay.setSuffix(" sec")
-        self.max_move_delay = QDoubleSpinBox()
-        self.max_move_delay.editingFinished.connect(self._update_move_delay_settings)
-        self.max_move_delay.setRange(0.0, 20.0)
-        self.max_move_delay.setDecimals(1)
-        self.max_move_delay.setSuffix(" sec")
+        self.min_move_delay_spbox = QDoubleSpinBox()
+        self.min_move_delay_spbox.editingFinished.connect(self._update_move_delay_settings)
+        self.min_move_delay_spbox.setRange(0.0, 20.0)
+        self.min_move_delay_spbox.setDecimals(1)
+        self.min_move_delay_spbox.setSuffix(" sec")
+        self.max_move_delay_spbox = QDoubleSpinBox()
+        self.max_move_delay_spbox.editingFinished.connect(self._update_move_delay_settings)
+        self.max_move_delay_spbox.setRange(0.0, 20.0)
+        self.max_move_delay_spbox.setDecimals(1)
+        self.max_move_delay_spbox.setSuffix(" sec")
 
         self.move_delay_layout = QFormLayout()
-        self.move_delay_layout.addRow("Min Move Delay:", self.min_move_delay)
-        self.move_delay_layout.addRow("Max Move Delay:", self.max_move_delay)
+        self.move_delay_layout.addRow("Min Move Delay:", self.min_move_delay_spbox)
+        self.move_delay_layout.addRow("Max Move Delay:", self.max_move_delay_spbox)
 
+        movement_layout.addWidget(self.auto_detection_checkbox)
+        movement_layout.addWidget(self.auto_move_checkbox)
         movement_layout.addWidget(self.human_movement_checkbox)
         movement_layout.addWidget(self.random_move_delay_checkbox)
         movement_layout.addLayout(self.move_delay_layout)
@@ -193,6 +202,38 @@ class ControlsView(QWidget):
         uiutils.toggle_layout_widgets_visible(self.advanced_layout, False)
         self._toggle_move_delay_inputs(False)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._apply_config()
+
+    def _apply_config(self):
+        self.white_button.setChecked(True)
+        # self.white_button.setChecked(self.session_data.play_as_white)
+        # self.black_button.setChecked(not self.session_data.play_as_white)
+        self.auto_detection_checkbox.setChecked(self.session_data.auto_detection)
+        self.auto_move_checkbox.setChecked(self.session_data.auto_move)
+        self.human_movement_checkbox.setChecked(self.session_data.human_like_movements)
+        self.random_move_delay_checkbox.setChecked(self.session_data.bot_params.random_move_delay)
+        self.min_move_delay_spbox.setValue(self.session_data.bot_params.min_move_delay)
+        self.max_move_delay_spbox.setValue(self.session_data.bot_params.max_move_delay)
+
+    def _make_next_move(self):
+        if self.auto_move_checkbox.isChecked():
+            self.bot.move_piece(self.session_data.next_move)
+
+    def update_game_color(self):
+        is_white = self.white_button.isChecked()
+        self.session_data.play_as_white = is_white
+
+    def _auto_detection_changed(self):
+        self.session_data.auto_detection = self.auto_detection_checkbox.isChecked()
+
+    def _auto_move_changed(self):
+        self.session_data.auto_move = self.auto_move_checkbox.isChecked()
+
+    def _human_movement_changed(self):
+        self.session_data.human_like_movements = self.human_movement_checkbox.isChecked()
+
     def _on_start_btn_clicked(self):
         # self.bot.play_game()
         pass
@@ -208,29 +249,24 @@ class ControlsView(QWidget):
         is_checked = self.random_move_delay_checkbox.isChecked()
         max_move_delay = self.settings["max_move_delay"]
         if is_checked:
-            self.max_move_delay.setValue(max_move_delay)
+            self.max_move_delay_spbox.setValue(max_move_delay)
             self._update_move_delay_settings()
         else:
-            self.max_move_delay.setValue(0.0)
+            self.max_move_delay_spbox.setValue(0.0)
         self._toggle_move_delay_inputs(is_checked)
+        self.session_data.bot_params.random_move_delay = is_checked
 
     def _update_move_delay_settings(self):
-        min_value = self.min_move_delay.value()
-        max_value = self.max_move_delay.value()
+        min_value = self.min_move_delay_spbox.value()
+        max_value = self.max_move_delay_spbox.value()
         if min_value > 0 and min_value > max_value:
-            self.max_move_delay.setValue(min_value)
-        self.settings["min_move_delay"] = min_value
-        self.settings["max_move_delay"] = max_value
+            self.max_move_delay_spbox.setValue(min_value)
+        self.session_data.bot_params.min_move_delay = min_value
+        self.session_data.bot_params.max_move_delay = max_value
 
     def _toggle_move_delay_inputs(self, enabled):
-        style = """
-                QSpinBox:disabled, QLabel:disabled, QCheckBox:disabled, QLineEdit:disabled {
-                    color: gray;
-                    background-color: #0d0d0d;
-                }
-            """
-        self.max_move_delay.setEnabled(enabled)
-        self.max_move_delay.setStyleSheet(style)
+        self.max_move_delay_spbox.setEnabled(enabled)
+        # self.max_move_delay_spbox.setStyleSheet(style)
         # for i in range(self.move_delay_layout.rowCount()):
         #     item = self.move_delay_layout.itemAt(i, QFormLayout.ItemRole.FieldRole)
         #     if item:

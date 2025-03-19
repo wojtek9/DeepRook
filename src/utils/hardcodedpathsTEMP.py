@@ -1,0 +1,1 @@
+STOCKFISH_PATH = r"C:\Users\christian\Desktop\Thefolder\Projects\RookceptionCNN\resources\stockfish\stockfish-windows-x86-64-avx2.exe"

@@ -1,10 +1,16 @@
 import os
 
 from PySide6.QtCore import QStandardPaths, QFile, QIODevice
+from numpy import ndarray
 
 
 def get_temp_dir():
-    return QStandardPaths.writableLocation(QStandardPaths.StandardLocation.TempLocation)
+    temp_loc = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.TempLocation)
+    temp_dir = os.path.join(temp_loc, "DeepRookCache")
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir)
+    return temp_dir
+
 
 def get_model_path():
     # Extract the .h5 model from Qt Resources and return the path to use with TensorFlow
@@ -28,7 +34,11 @@ def get_model_path():
         return None
 
 
-def board_to_fen(board_state, turn="w", castling_rights="KQkq", en_passant="-", halfmove="0", fullmove="1"):
+def get_turn_from_play_as_white(play_as_white: bool):
+    return "w" if play_as_white else "b"
+
+
+def board_to_fen(board_state: ndarray, turn="w", castling_rights="KQkq", en_passant="-", halfmove="0", fullmove="1"):
     # Convert board state (8x8 numpy array) into FEN string including castling rights and en passant
 
     # Map CNN labels to chess symbols

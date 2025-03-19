@@ -14,6 +14,9 @@ class SessionData(QObject):
     humanLikeMovementsChanged = Signal(bool)
     tempChessboardImageChanged = Signal(str)
     playAsWhiteChanged = Signal(bool)
+    autoDetectionChanged = Signal(bool)
+    autoMoveChanged = Signal(bool)
+    nextMoveChanged = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -24,9 +27,9 @@ class SessionData(QObject):
         self._bot_enabled: bool = False
         self._selected_engine: str = "Stockfish"
         self._engine_rating: int = 1200
-        self._human_like_movements: bool = True
         self._temp_chessboard_image: Optional[str] = None
         self._model_path: str = ""
+        self.__next_move: str = ""
 
     @property
     def play_as_white(self):
@@ -34,8 +37,8 @@ class SessionData(QObject):
 
     @play_as_white.setter
     def play_as_white(self, value: bool):
-        if self.play_as_white != value:
-            self.play_as_white = value
+        if self._play_as_white != value:
+            self._play_as_white = value
             self.playAsWhiteChanged.emit(value)
 
     @property
@@ -47,6 +50,16 @@ class SessionData(QObject):
         if self._selected_region != value:
             self._selected_region = value
             self.selectedRegionChanged.emit(value)
+
+    @property
+    def next_move(self):
+        return self.__next_move
+
+    @next_move.setter
+    def next_move(self, value: str):
+        if self.__next_move != value:
+            self.__next_move = value
+        self.nextMoveChanged.emit(value)
 
     @property
     def game_state(self):
@@ -89,13 +102,33 @@ class SessionData(QObject):
             self.engineRatingChanged.emit(value)
 
     @property
+    def auto_detection(self):
+        return self.bot_params.auto_detection
+
+    @auto_detection.setter
+    def auto_detection(self, value: bool):
+        if self.bot_params.auto_detection != value:
+            self.bot_params.auto_detection = value
+            self.autoDetectionChanged.emit(value)
+
+    @property
+    def auto_move(self):
+        return self.bot_params.auto_move
+
+    @auto_move.setter
+    def auto_move(self, value: bool):
+        if self.bot_params.auto_move != value:
+            self.bot_params.auto_move = value
+            self.autoMoveChanged.emit(value)
+
+    @property
     def human_like_movements(self):
-        return self._human_like_movements
+        return self.bot_params.human_mouse_movements
 
     @human_like_movements.setter
     def human_like_movements(self, value: bool):
-        if self._human_like_movements != value:
-            self._human_like_movements = value
+        if self.bot_params.human_mouse_movements != value:
+            self.bot_params.human_mouse_movements = value
             self.humanLikeMovementsChanged.emit(value)
 
     @property

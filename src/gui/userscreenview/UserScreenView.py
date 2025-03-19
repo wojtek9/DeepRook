@@ -1,5 +1,6 @@
 import os
 import threading
+import time
 
 import cv2
 from PySide6.QtWidgets import (
@@ -14,16 +15,18 @@ from PySide6.QtWidgets import (
     QDialog,
     QGroupBox,
     QFormLayout,
+    QHBoxLayout,
 )
 from PySide6.QtGui import QImage, QPixmap, QPainter, QPen
 from PySide6.QtCore import Qt, QRect
 
 from src.CNNlayer.Rookception import Rookception
-from src.bot.ChessBot import ChessBot
+from src.ChessEngine.stockfish.StockfishLayer import StockfishLayer
 from src.gui.userscreenview.ScreenCapture import ScreenCapture
 from src.gui.userscreenview.ScreenRegionSelector import ScreenRegionSelector
 from src.logger.AppLogger import AppLogger
 from src.session.SessionData import SessionData
+from src.utils import utils
 
 
 class UserScreenView(QWidget):
@@ -34,6 +37,7 @@ class UserScreenView(QWidget):
         self.session_data.selectedRegionChanged.connect(self.update_overlay)
 
         self._rookception: Rookception | None = None
+        self._engine: StockfishLayer | None = None
 
         # Screen Capture instance
         self.screen_capture = ScreenCapture(self)
@@ -61,7 +65,7 @@ class UserScreenView(QWidget):
         self.fps_selector.setRange(1, 60)
         self.fps_selector.setValue(10)
         self.fps_selector.valueChanged.connect(self.update_fps)
-        self.screen_control_layout.addRow("FPS:", self.fps_selector)
+        self.screen_control_layout.addRow("FPS (1-60):", self.fps_selector)
 
         self.capture_checkbox = QCheckBox("Enable Screen Capture")
         self.capture_checkbox.setChecked(False)
@@ -73,39 +77,71 @@ class UserScreenView(QWidget):
         self.engine_control_layout = QVBoxLayout(self.engine_control_panel)
         self.get_best_move_btn = QPushButton("Get Best Move")
         self.get_best_move_btn.clicked.connect(self._on_get_next_move_clicked)
+        best_move_layout = QHBoxLayout()
+        best_move_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        best_move_title = QLabel("Best Move:")
+        best_move_title.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.best_move_label = QLabel("N/A")
+        best_move_layout.addWidget(best_move_title, alignment=Qt.AlignmentFlag.AlignHCenter)
+        best_move_layout.addWidget(self.best_move_label, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.engine_control_layout.addLayout(best_move_layout)
         self.engine_control_layout.addWidget(self.get_best_move_btn)
 
         self.main_layout.addWidget(self.screen_control_panel)
         self.main_layout.addWidget(self.engine_control_panel)
+
+        screen_capture_layout = QVBoxLayout()
+        screen_capture_layout.setContentsMargins(20, 20, 20, 20)
+        screen_capture_layout.setSpacing(0)
 
         # Label for displaying screen capture
         self.live_screen_label = QLabel(self)
         self.live_screen_label.setVisible(False)
         self.live_screen_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.live_screen_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.main_layout.addWidget(self.live_screen_label)
+        screen_capture_layout.addWidget(self.live_screen_label)
 
         # Label for displaying captured region if screen capture is turned off
         self.static_screen_label = QLabel(self)
         self.static_screen_label.setVisible(True)
         self.static_screen_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.static_screen_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.main_layout.addWidget(self.static_screen_label)
+        screen_capture_layout.addWidget(self.static_screen_label)
 
-        self._initialize_rookception(session_data)
+        self.main_layout.addLayout(screen_capture_layout)
 
+    def resizeEvent(self, event):
+        # Ensures the static image resizes when the window is resized
+        super().resizeEvent(event)
 
-    def _load_rookception(self, model_path):
+        # Update static screen label to resize the pixmap
+        if (
+            not self.static_screen_label.pixmap()
+            or self.static_screen_label.pixmap().isNull()
+            or not self.static_screen_label.isVisible()
+        ):
+            return
+
+        self.update_static_captured_label()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._apply_config()
+        self._initialize(self.session_data)
+
+    def _apply_config(self):
+        pass
+
+    def _init_modules(self, model_path):
+        self._engine = StockfishLayer()
+        AppLogger.debug("Engine loaded")
         self._rookception = Rookception(model_path)
         AppLogger.debug("CNN loaded")
 
-    def _initialize_rookception(self, session_data):
-        thread = threading.Thread(target=self._load_rookception, args=(session_data.model_path,))
+    def _initialize(self, session_data):
+        thread = threading.Thread(target=self._init_modules, args=(session_data.model_path,))
         thread.daemon = True
         thread.start()
-
-    def set_cnn(self, cnn):
-        self._rookception = cnn
 
     def update_live_screen(self, img_arr):
         # Update Label with the new screen frame and overlay selection
@@ -117,7 +153,7 @@ class UserScreenView(QWidget):
         # Draw overlay
         if self.session_data.selected_region:
             painter = QPainter(pixmap)
-            painter.setPen(QPen(Qt.GlobalColor.red, 2))
+            painter.setPen(QPen(Qt.GlobalColor.red, 4))
             x, y, w, h = self.session_data.selected_region
             painter.drawRect(QRect(x, y, w, h))
             painter.end()
@@ -131,7 +167,7 @@ class UserScreenView(QWidget):
         )
         self.store_last_frame(img_arr)
 
-    def update_static_captured_region(self):
+    def update_static_captured_label(self):
         # Display the static captured image of the selected region
         if not self.session_data.temp_chessboard_image:
             print("No captured image found.")
@@ -156,6 +192,15 @@ class UserScreenView(QWidget):
                 Qt.TransformationMode.SmoothTransformation,
             )
         )
+
+    def update_static_snapshot(self):
+        if not self.session_data.selected_region:
+            return
+
+        x, y, w, h = self.session_data.selected_region
+        board_img_path = self.screen_capture.capture_static_image(x, y, w, h)
+        self.session_data.temp_chessboard_image = board_img_path
+        return board_img_path
 
     def update_overlay(self, region):
         # Force a screen update when the region changes
@@ -194,12 +239,32 @@ class UserScreenView(QWidget):
                 img_path = self.screen_capture.capture_static_image(x, y, w, h)
                 self.session_data.selected_region = selected_area
                 self.session_data.temp_chessboard_image = img_path
-                self.update_static_captured_region()
+                self.update_static_captured_label()
 
     def _on_get_next_move_clicked(self):
+        self.update_next_move()
+
+    def update_next_move(self):
+        start_time = time.perf_counter()
         board_region = self.session_data.selected_region
-        board_img_path = self.session_data.temp_chessboard_image
-        if not self._rookception or not board_region or not board_img_path:
+        if not self._rookception or not self._engine or not board_region:
             return
 
-        self._rookception.predict_board(board_img_path)
+        board_img_path = self.update_static_snapshot()
+
+        board_state = self._rookception.predict_board(board_img_path)
+        turn = utils.get_turn_from_play_as_white(self.session_data.play_as_white)
+        best_move = self._engine.get_next_move(board_state, turn)
+        print("best move: ", best_move)
+        if best_move:
+            self.session_data.next_move = best_move
+            self.best_move_label.setText(best_move)
+            # Update again to show new move in label
+            self.update_static_snapshot()
+            self.update_static_captured_label()
+        else:
+            self.best_move_label.setText("N/A")
+
+        end_time = time.perf_counter()
+        execution_time = (end_time - start_time) * 1000  # Convert to milliseconds
+        print(f"runtime {execution_time:.2f} ms")
