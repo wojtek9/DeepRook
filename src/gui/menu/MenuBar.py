@@ -2,16 +2,17 @@ from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QMenuBar, QMenu, QApplication
 
 from src.gui.menu.settings.SettingsWindow import SettingsWindow
+from src.session.SessionData import SessionData
 
 
 class MenuBar(QMenuBar):
-    def __init__(self, app: QApplication, parent=None):
+    def __init__(self, session_data: SessionData, parent=None):
         super().__init__(parent)
 
-        self.app = app
+        self.session_data = session_data
 
         # Settings Menu
-        self.settings_window = SettingsWindow(app=app, parent=self)
+        self.settings_window = SettingsWindow(session_data=session_data)
         settings_menu = QMenu("", self)
         settings_menu.setIcon(QIcon(":/icn/menu_settings_icon"))
         settings_action = QAction("Settings", self)

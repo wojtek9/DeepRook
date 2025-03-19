@@ -3,13 +3,14 @@ from PySide6.QtWidgets import QDialog, QVBoxLayout, QTabWidget, QWidget, QLabel,
 from src.gui.menu.settings.HotkeysTab import HotkeysTab
 from src.gui.menu.settings.StorageTab import StorageTab
 from src.gui.menu.settings.SystemTab import SystemTab
+from src.session.SessionData import SessionData
 
 
 class SettingsWindow(QDialog):
-    def __init__(self, app: QApplication, parent=None):
-        super().__init__(parent)
+    def __init__(self, session_data: SessionData):
+        super().__init__()
 
-        self.app = app
+        self.session_data = session_data
 
         self.setWindowTitle("Settings")
         self.setGeometry(200, 200, 400, 300)
@@ -17,9 +18,9 @@ class SettingsWindow(QDialog):
         self.main_layout = QVBoxLayout()
         self.tabs = QTabWidget()
 
-        self.system_settings_tab = SystemTab(app=app)
+        self.system_settings_tab = SystemTab()
         self.storage_tab = StorageTab()
-        self.hotkeys_tab = HotkeysTab()
+        self.hotkeys_tab = HotkeysTab(session_data=session_data)
 
         # Add sections
         self.tabs.addTab(self.system_settings_tab, "System")

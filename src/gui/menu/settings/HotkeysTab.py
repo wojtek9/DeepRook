@@ -8,11 +8,13 @@ from PySide6.QtWidgets import (
     QLabel,
     QToolButton,
     QApplication,
+    QPushButton,
 )
 from PySide6.QtGui import QKeyEvent, QKeySequence, QIcon, QMouseEvent
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QTimer
 
 from src.core.enums.Hotkeys import Hotkey
+from src.session.SessionData import SessionData
 
 
 class HotkeyRowAction(IntEnum):
@@ -21,68 +23,143 @@ class HotkeyRowAction(IntEnum):
     CLEAR = 3
 
 
-class HotkeyRowData:
-    def __init__(self, description: str):
+class HotkeyRowObject:
+    def __init__(self, description: str, hotkey: Hotkey):
         self.description = description
+        self.hotkey = hotkey
         self.hotkey_bind = ""
-        self.line_edit: HotkeyLineEdit | None = None
-        self.accept_btn: QToolButton | None = None
-        self.block_btn: QToolButton | None = None
-        self.clear_btn: QToolButton | None = None
+
+        self.line_edit = HotkeyLineEdit()
+        self.accept_btn = self._create_button(":/icn/checkmark_icon", enabled=False)
+        self.block_btn = self._create_button(":/icn/block_icon", enabled=False)
+        self.clear_btn = self._create_button(":/icn/delete_icon", enabled=False)
+
+        self.accept_btn.clicked.connect(self._on_accept_btn_clicked)
+        self.block_btn.clicked.connect(self._on_block_btn_clicked)
+        self.clear_btn.clicked.connect(self._on_clear_btn_clicked)
+
+        self.line_edit.textChanged.connect(self._on_text_changed)
+        self.line_edit.clicked.connect(self._on_line_edit_clicked)
+        self.line_edit.focusOutEventTriggered.connect(self._on_line_edit_focus_out)
+
+    @staticmethod
+    def _create_button(icon_path: str, enabled=True) -> QToolButton:
+        btn = QToolButton()
+        btn.setIcon(QIcon(icon_path))
+        btn.setEnabled(enabled)
+        return btn
+
+    def apply_line_edit_text_safe(self, text: str):
+        self.line_edit.blockSignals(True)
+        self.line_edit.setText(text)
+        self.line_edit.blockSignals(False)
+
+    def clear_focus(self):
+        self.line_edit.clearFocus()
+        self.accept_btn.clearFocus()
+        self.block_btn.clearFocus()
+        self.clear_btn.clearFocus()
+
+    def _on_accept_btn_clicked(self):
+        self.hotkey_bind = self.line_edit.text().strip()
+        self.accept_btn.setEnabled(False)
+        self.block_btn.setEnabled(True)
+        self.clear_btn.setEnabled(True)
+        self.clear_focus()
+
+    def _on_block_btn_clicked(self):
+        pass
+
+    def _on_clear_btn_clicked(self):
+        self.hotkey_bind = ""
+        self.line_edit.complete_clear()
+        self.accept_btn.setEnabled(False)
+        self.block_btn.setEnabled(False)
+        self.clear_btn.setEnabled(False)
+        self.clear_focus()
+
+    def _on_text_changed(self, text: str):
+        if text.strip() and text.strip() != self.hotkey_bind.strip():
+            self.accept_btn.setEnabled(True)
+        if text.strip():
+            self.clear_btn.setEnabled(True)
+
+    def _on_line_edit_clicked(self):
+        self.apply_line_edit_text_safe("")
+
+    def _on_line_edit_focus_out(self):
+        self.apply_line_edit_text_safe(self.hotkey_bind)
+        self.accept_btn.setEnabled(False)
+        if not self.hotkey_bind.strip():
+            self.block_btn.setEnabled(False)
+            self.clear_btn.setEnabled(False)
 
 
 class HotkeyLineEdit(QLineEdit):
     clicked = Signal()
+    focusOutEventTriggered = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setReadOnly(True)
+        self.unsaved_hotkey_bind = ""
         self.pressed_keys = []
 
-        # make an accept btn to then clear self.pressed_keys and register the shortcut
-        # and remove btn to clear the hotkey
+    def focusInEvent(self, event):
+        self.blockSignals(True)
+        self.setText("")
+        self.blockSignals(False)
+        super().focusInEvent(event)
+
+    def focusOutEvent(self, event):
+        # Slight delay to avoid race condition when clicking accept btn
+        QTimer.singleShot(100, self.focusOutEventTriggered.emit)
+        super().focusOutEvent(event)
 
     def mousePressEvent(self, event: QMouseEvent):
         self.clicked.emit()
         super().mousePressEvent(event)
 
-    def clear_field(self):
-        self.pressed_keys.clear()
-        self.clear()
-
     def keyPressEvent(self, event: QKeyEvent):
-        event.accept()  # Stop QLineEdit from processing key events like CTRL+A
+        event.accept()
 
         readable_key = self.get_readable_key(event.key())
         if readable_key not in self.pressed_keys:
             self.pressed_keys.append(readable_key)
-            hotkey_str = " + ".join(self.pressed_keys)
-            self.setText(hotkey_str)
+            self.setText(" + ".join(self.pressed_keys))
+
+    def keyReleaseEvent(self, event: QKeyEvent):
+        event.accept()
+        self.unsaved_hotkey_bind = " + ".join(self.pressed_keys)
+        self.pressed_keys.clear()
+
+    def complete_clear(self):
+        self.unsaved_hotkey_bind = ""
+        self.clear_field()
+
+    def clear_field(self):
+        self.pressed_keys.clear()
+        self.blockSignals(True)
+        self.clear()
+        self.blockSignals(False)
 
     @staticmethod
     def get_readable_key(key):
-        # Convert event.key() to human-readable key name
         key_map = {
             Qt.Key.Key_Control: "CTRL",
             Qt.Key.Key_Shift: "SHIFT",
             Qt.Key.Key_Alt: "ALT",
-            Qt.Key.Key_Meta: "META",  # Windows key / Command key on macOS
+            Qt.Key.Key_Meta: "META",
         }
 
-        if key in key_map:
-            return key_map[key]
-
-        readable_key = QKeySequence(key).toString()
-
-        return readable_key if readable_key else str(key)
-
-    def keyReleaseEvent(self, event: QKeyEvent):
-        event.accept()
+        return key_map.get(key, QKeySequence(key).toString() or str(key))
 
 
 class HotkeysTab(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, session_data: SessionData, parent=None):
         super().__init__(parent)
+
+        self.session_data = session_data
 
         main_layout = QVBoxLayout(self)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -90,173 +167,46 @@ class HotkeysTab(QWidget):
         self.grid_layout = QGridLayout()
         self.registered_hotkeys: dict[Hotkey, str] = {}
 
-        self.hotkey_rows: dict[Hotkey, HotkeyRowData] = {
-            Hotkey.GET_NEXT_MOVE: HotkeyRowData("Get Next Move From Engine"),
-            Hotkey.MAKE_NEXT_MOVE: HotkeyRowData("Make Next Move With Bot"),
-            Hotkey.INCREASE_DEPTH: HotkeyRowData("Increase Engine Depth"),
-            Hotkey.DECREASE_DEPTH: HotkeyRowData("Decrease Engine Depth"),
-        }
+        self.hotkey_row_objs: list[HotkeyRowObject] = [
+            HotkeyRowObject(description="Get Next Move From Engine", hotkey=Hotkey.GET_NEXT_MOVE),
+            HotkeyRowObject(description="Make Next Move With Bot", hotkey=Hotkey.MAKE_NEXT_MOVE),
+            HotkeyRowObject(description="Increase Engine Depth", hotkey=Hotkey.INCREASE_DEPTH),
+            HotkeyRowObject(description="Decrease Engine Depth", hotkey=Hotkey.DECREASE_DEPTH),
+        ]
 
-        # Create fields for each hotkey
-        for row, (hotkey, row_data) in enumerate(self.hotkey_rows.items()):
-            label = QLabel(row_data.description)
-
-            line_edit = HotkeyLineEdit(self)
-
-            accept_btn = QToolButton()
-            accept_btn.setEnabled(False)
-            accept_btn.setIcon(QIcon(":/icn/checkmark_icon"))
-            accept_btn.clicked.connect(
-                lambda _, hk=hotkey, act=HotkeyRowAction.ACCEPT: self._handle_hotkey_row(hk, act)
-            )
-            line_edit.textChanged.connect(
-                lambda text, btn=accept_btn: btn.setEnabled(bool(text.strip() and text.strip() != row_data.hotkey_bind))
-            )
-            line_edit.clicked.connect(lambda rd=row_data: self._line_edit_clicked(row_data))
-
-            block_btn = QToolButton()
-            block_btn.setIcon(QIcon(":/icn/block_icon"))
-            block_btn.clicked.connect(lambda _, hk=hotkey, act=HotkeyRowAction.BLOCK: self._handle_hotkey_row(hk, act))
-
-            clear_btn = QToolButton()
-            clear_btn.setIcon(QIcon(":/icn/delete_icon"))
-            clear_btn.clicked.connect(lambda _, hk=hotkey, act=HotkeyRowAction.CLEAR: self._handle_hotkey_row(hk, act))
-            # line_edit.setPlaceholderText("Click to set hotkey")
-            # line_edit.installEventFilter(self)  # Enable event filtering
-
-            row_data.line_edit = line_edit
-            row_data.accept_btn = accept_btn
-            row_data.block_btn = block_btn
-            row_data.clear_btn = clear_btn
-
-            self.grid_layout.addWidget(label, row, 0)
-            self.grid_layout.addWidget(line_edit, row, 1)
-            self.grid_layout.addWidget(accept_btn, row, 2)
-            self.grid_layout.addWidget(block_btn, row, 3)
-            self.grid_layout.addWidget(clear_btn, row, 4)
-
+        self._setup_ui()
         main_layout.addLayout(self.grid_layout)
 
-    def set_config(self):
+    def _setup_ui(self):
+        for row, row_obj in enumerate(self.hotkey_row_objs):
+            label = QLabel(row_obj.description)
+            self.grid_layout.addWidget(label, row, 0)
+            self.grid_layout.addWidget(row_obj.line_edit, row, 1)
+            self.grid_layout.addWidget(row_obj.accept_btn, row, 2)
+            self.grid_layout.addWidget(row_obj.block_btn, row, 3)
+            self.grid_layout.addWidget(row_obj.clear_btn, row, 4)
+
+    def save_hotkeys_to_session(self):
         pass
-        # REMEMBER TO USE BLOCKSIGNALS WHEN SETTING CONFIG SO ACCEPT BTN DOESNT GET ENABLED
-        # line_edit.blockSignals(True)
-        # line_edit.setText(saved_hotkey)  # Set text without firing textChanged
-        # line_edit.blockSignals(False)
-
-    def clear_unset_hotkey_fields(self):
-        for hotkey, row_data in self.hotkey_rows.items():
-            if not row_data.hotkey_bind.strip():
-                row_data.line_edit.clear_field()
-
-    def get_hotkey_bind_from_enum(self, action: Hotkey):
-        return self.registered_hotkeys.get(action, None)
-
-    def _line_edit_clicked(self, clicked_row_data: HotkeyRowData):
-        for row in self.hotkey_rows.values():
-            if row.hotkey_bind.strip():
-                row.line_edit.setText(row.hotkey_bind.strip())
-        if clicked_row_data.hotkey_bind.strip():
-            clicked_row_data.line_edit.setText("")
-
-    def _handle_hotkey_row(self, hotkey: Hotkey, action: HotkeyRowAction):
-        line_edit = self.hotkey_rows[hotkey].line_edit
-        if action == HotkeyRowAction.ACCEPT:
-            self.hotkey_rows[hotkey].hotkey_bind = line_edit.text().strip()
-            self.hotkey_rows[hotkey].accept_btn.setEnabled(False)
-        elif action == HotkeyRowAction.BLOCK:
-            pass
-        elif action == HotkeyRowAction.CLEAR:
-            self.hotkey_rows[hotkey].hotkey_bind = ""
-            line_edit.clear_field()
-        self.clear_focused_widgets()
 
     @staticmethod
     def clear_focused_widgets():
-        try:
-            focused_widget = QApplication.focusWidget()
-            if focused_widget:
-                focused_widget.clearFocus()
-        except Exception:
-            pass
+        focused_widget = QApplication.focusWidget()
+        if focused_widget:
+            focused_widget.clearFocus()
 
     def mousePressEvent(self, event):
-        try:
-            self.clear_unset_hotkey_fields()
-            self.clear_focused_widgets()
-        except Exception:
-            pass
-        finally:
-            super().mousePressEvent(event)
+        self.clear_focused_widgets()
+        super().mousePressEvent(event)
 
-    # def eventFilter(self, obj, event):
-    #     """Intercept clicks on QLineEdit to start key capture."""
-    #     if event.type() == QEvent.Type.MouseButtonPress and obj in self.hotkey_fields.values():
-    #         self.capture_hotkey(obj)
-    #         return True
-    #
-    #     return super().eventFilter(obj, event)
+    def hideEvent(self, event):
+        self.clear_focused_widgets()
+        for row_obj in self.hotkey_row_objs:
+            row_obj.clear_focus()
+            row_obj.line_edit.setText(row_obj.hotkey_bind)
+        self.save_hotkeys_to_session()
+        super().hideEvent(event)
 
-    # def capture_hotkey(self, line_edit):
-    #     """Start listening for key presses when the field is clicked."""
-    #     self.active_hotkey_field = line_edit
-    #     self.pressed_keys.clear()
-    #     line_edit.grabKeyboard()  # Capture keyboard input
-    #
-    # @staticmethod
-    # def get_readable_key(key):
-    #     # Convert event.key() to human-readable key name
-    #     key_map = {
-    #         Qt.Key.Key_Control: "CTRL",
-    #         Qt.Key.Key_Shift: "SHIFT",
-    #         Qt.Key.Key_Alt: "ALT",
-    #         Qt.Key.Key_Meta: "META",  # Windows key / Command key on macOS
-    #     }
-    #
-    #     if key in key_map:
-    #         return key_map[key]
-    #
-    #     readable_key = QKeySequence(key).toString()
-    #
-    #     return readable_key if readable_key else str(key)
-    #
-    # def keyPressEvent(self, event: QKeyEvent):
-    #     """Capture the pressed keys and store them in order."""
-    #     if not self.active_hotkey_field:
-    #         return
-    #
-    #     key = event.key()
-    #     modifiers = event.modifiers()
-    #
-    #     self.active_hotkey_field.setText(self.get_readable_key(key))
-    #
-    #     # Track modifiers in the order they are pressed
-    #     if modifiers & Qt.KeyboardModifier.ControlModifier and "CTRL" not in self.pressed_keys:
-    #         self.pressed_keys.append("CTRL")
-    #     if modifiers & Qt.KeyboardModifier.AltModifier and "ALT" not in self.pressed_keys:
-    #         self.pressed_keys.append("ALT")
-    #     if modifiers & Qt.KeyboardModifier.ShiftModifier and "SHIFT" not in self.pressed_keys:
-    #         self.pressed_keys.append("SHIFT")
-    #
-    #     # Store normal key (ignoring standalone modifiers)
-    #     key_name = event.text().upper()
-    #     if key_name and key_name not in ["CTRL", "ALT", "SHIFT"] and key_name not in self.pressed_keys:
-    #         self.pressed_keys.append(key_name)
-    #     print(self.pressed_keys)
-    #
-    # def keyReleaseEvent(self, event: QKeyEvent):
-    #     """Register hotkey only after all keys are released."""
-    #     if not self.active_hotkey_field:
-    #         return
-    #
-    #     # Convert pressed keys list to a formatted hotkey string
-    #     hotkey_str = " + ".join(self.pressed_keys) if self.pressed_keys else "Invalid Key"
-    #
-    #     # Set the hotkey in the field
-    #     self.active_hotkey_field.setText(hotkey_str)
-    #     self.field_registered_hotkeys[self.active_hotkey_field] = hotkey_str
-    #
-    #     # Stop capturing keyboard input
-    #     self.active_hotkey_field.releaseKeyboard()
-    #     self.active_hotkey_field = None
-    #     self.pressed_keys.clear()  # Clear for next capture
+    def closeEvent(self, event):
+        print("here")
+        super().closeEvent(event)

@@ -3,10 +3,8 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QApplication
 
 
 class SystemTab(QWidget):
-    def __init__(self, app: QApplication, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
-
-        self.app = app
 
         # Main layout
         main_layout = QVBoxLayout(self)

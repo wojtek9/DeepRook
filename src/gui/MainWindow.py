@@ -20,7 +20,7 @@ class MainWindow(QMainWindow):
         self.setGeometry(560, 240, 800, 600)
         self.setMinimumSize(735, 480)
 
-        self.menu_bar = MenuBar(app=app, parent=self)
+        self.menu_bar = MenuBar(session_data=session_data, parent=self)
         self.setMenuBar(self.menu_bar)
 
         self.central_widget = CentralWidget(parent=self, session_data=session_data)
