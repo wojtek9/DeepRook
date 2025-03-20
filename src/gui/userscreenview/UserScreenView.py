@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
 )
 from PySide6.QtGui import QImage, QPixmap, QPainter, QPen
-from PySide6.QtCore import Qt, QRect
+from PySide6.QtCore import Qt, QRect, QTimer
 
 from src.CNNlayer.Rookception import Rookception
 from src.ChessEngine.stockfish.StockfishLayer import StockfishLayer
@@ -210,6 +210,7 @@ class UserScreenView(QWidget):
         x, y, w, h = self.session_data.selected_region
         board_img_path = self.screen_capture.capture_static_image(x, y, w, h)
         self.session_data.temp_chessboard_image = board_img_path
+        self.update_static_captured_label()
         return board_img_path
 
     def update_overlay(self, region):
@@ -270,8 +271,7 @@ class UserScreenView(QWidget):
             self.session_data.next_move = best_move
             self.best_move_label.setText(best_move)
             # Update again to show new move in label
-            self.update_static_snapshot()
-            self.update_static_captured_label()
+            QTimer.singleShot(1000, self.update_static_snapshot)
         else:
             self.best_move_label.setText("N/A")
 

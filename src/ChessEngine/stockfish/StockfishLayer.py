@@ -1,5 +1,6 @@
 from stockfish import Stockfish
 from src.utils import utils, hardcodedpathsTEMP
+from collections import Counter
 
 """
 Stockfish levels:
@@ -25,6 +26,7 @@ class StockfishLayer:
     def __init__(self):
         self.stockfish = self.start_stockfish()
         self.game_fen = None
+        self.fen_history = []
 
     @staticmethod
     def start_stockfish():
@@ -41,16 +43,34 @@ class StockfishLayer:
         try:
             # Update game state before getting the best move
             self.update_game_state(board_state, turn)
-            best_move = self.stockfish.get_best_move()
+            top_moves = self.stockfish.get_top_moves(3)
+            best_move = self.select_non_repeating_move(top_moves)
 
-            # Apply the move and update the FEN
+            if not best_move:
+                best_move = self.stockfish.get_best_move()
+
             self.stockfish.make_moves_from_current_position([best_move])
             self.game_fen = self.stockfish.get_fen_position()
+            self.fen_history.append(self.game_fen)  # Track FEN after move
 
             return best_move
         except Exception as e:
             print(f"Stockfish error - {e}")
             return None
+
+    def select_non_repeating_move(self, top_moves):
+        fen_counter = Counter(self.fen_history)
+
+        for move in top_moves:
+            move_san = move["Move"]
+            self.stockfish.make_moves_from_current_position([move_san])
+            move_fen = self.stockfish.get_fen_position()
+            self.stockfish.set_fen_position(self.game_fen)
+
+            if fen_counter[move_fen] < 2:
+                return move_san
+
+        return None
 
     def is_alive(self):
         # Checks if Stockfish is still responsive
