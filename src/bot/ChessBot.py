@@ -14,4 +14,4 @@ class ChessBot(QObject):
         self.running = True
 
     def move_piece(self, move: str):
-        Mouse.move_piece_hyper(move, self.session_data.selected_region)
+        Mouse.move_piece_hypersonic(move, self.session_data.selected_region)

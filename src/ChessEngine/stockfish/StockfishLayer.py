@@ -1,6 +1,25 @@
 from stockfish import Stockfish
 from src.utils import utils, hardcodedpathsTEMP
 
+"""
+Stockfish levels:
+set_skill_level(n)
+0	~800 (Beginner)
+5	~1200 (Casual Player)
+10	~1500 (Club Player)
+15	~2000 (Expert)
+20	~2500+ (Grandmaster)
+
+Stockfish depth:
+set_depth(n)
+Lower depth (3-10) → Faster calculations (~0.1s per move).
+Higher depth (15-30) → Stronger play but slower.
+Very high depth (30-99) → Superhuman play (~Stockfish 15 at max strength).
+
+get top moves:
+get_top_moves(3)
+"""
+
 
 class StockfishLayer:
     def __init__(self):
