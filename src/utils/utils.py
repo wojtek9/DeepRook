@@ -141,19 +141,57 @@ def board_to_fen(board_state: ndarray, turn="w", castling_rights="KQkq", en_pass
     return fen
 
 
+def infer_castling_rights(board_state):
+    rights = ""
+
+    # White king + rooks
+    if board_state[7][4] == "wK":
+        if board_state[7][0] == "wR":
+            rights += "Q"
+        if board_state[7][7] == "wR":
+            rights += "K"
+
+    # Black king + rooks
+    if board_state[0][4] == "bK":
+        if board_state[0][0] == "bR":
+            rights += "q"
+        if board_state[0][7] == "bR":
+            rights += "k"
+
+    if not rights.strip():
+        return "-"
+
+    return rights
+
+
 def print_board(board, title=""):
     index_mapping = {i: 8 - i for i in range(8)}
 
-    # Replace "empty" with " ."
-    board = [[piece if piece != "empty" else " ." for piece in row] for row in board]
+    piece_map = {
+        "bP": "♟",
+        "bN": "♞",
+        "bB": "♝",
+        "bR": "♜",
+        "bQ": "♛",
+        "bK": "♚",
+        "wP": "♙",
+        "wN": "♘",
+        "wB": "♗",
+        "wR": "♖",
+        "wQ": "♕",
+        "wK": "♔",
+        "empty": ".",
+    }
+
+    board = [[piece_map.get(piece, piece) for piece in row] for row in board]
 
     if title:
         print(f"\n{title}:")
 
-    print("  ---------------------------------")
+    print("---------------------------------")
     for idx, row in enumerate(board):
-        row_number = index_mapping[idx]  # Get the row number
-        formatted_row = "  ".join(f"{piece:>2}" for piece in row)  # two-character spacing
+        row_number = index_mapping[idx]
+        formatted_row = " | ".join(f"{piece}" for piece in row)
         print(f"{row_number} | {formatted_row} |")
-    print("  ---------------------------------")
-    print("    a   b   c   d   e   f   g   h ")
+        print("---------------------------------")
+    print("    a   b   c   d   e   f   g   h")

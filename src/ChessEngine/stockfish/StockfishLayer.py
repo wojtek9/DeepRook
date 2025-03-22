@@ -1,6 +1,8 @@
+from pprint import pprint
+
 from stockfish import Stockfish
 from src.utils import utils, hardcodedpathsTEMP
-from collections import Counter
+from collections import Counter, deque
 
 """
 Stockfish levels:
@@ -18,15 +20,18 @@ Higher depth (15-30) → Stronger play but slower.
 Very high depth (30-99) → Superhuman play (~Stockfish 15 at max strength).
 
 get top moves:
-get_top_moves(3)
+get_top_moves(n)
 """
 
 
 class StockfishLayer:
     def __init__(self):
         self.stockfish = self.start_stockfish()
+        # self.stockfish.set_skill_level(12)
+        pprint(self.stockfish.get_parameters())
         self.game_fen = None
-        self.fen_history = []
+        self.fen_history = deque(maxlen=100)
+        self.move_history = deque(maxlen=100)
 
     @staticmethod
     def start_stockfish():
@@ -37,28 +42,60 @@ class StockfishLayer:
             return None
 
     def get_next_move(self, board_state, turn):
-        # Returns the best move from Stockfish given a board state and updates game state
         if not self.is_alive():
             self.restart_stockfish()
+
         try:
-            # Update game state before getting the best move
             self.update_game_state(board_state, turn)
-            top_moves = self.stockfish.get_top_moves(3)
-            best_move = self.select_non_repeating_move(top_moves)
+
+            if not self.stockfish.is_fen_valid(self.game_fen):
+                print(f"[ERROR] Invalid FEN passed to Stockfish: {self.game_fen}")
+                return None
+
+            top_moves = self.stockfish.get_top_moves(2)
+
+            if not top_moves or "Move" not in top_moves[0]:
+                print("[ERROR] Stockfish returned no valid top moves.")
+                return None
+
+            best_move = self.stockfish.get_best_move()
 
             if not best_move:
-                best_move = self.stockfish.get_best_move()
+                print("[ERROR] Stockfish returned None for best move.")
+                return None
 
+            # Detect if repeating moves
+            if self.is_draw_about_to_happen(best_move):
+                if len(top_moves) > 1:
+                    best_move = top_moves[1]["Move"]
+                    print("[WARNING] Repetition detected: selecting next best move.")
+                else:
+                    print("[WARNING] Only one move available; repetition may occur.")
+
+            # Apply the move and update FEN
             self.stockfish.make_moves_from_current_position([best_move])
             self.game_fen = self.stockfish.get_fen_position()
-            self.fen_history.append(self.game_fen)  # Track FEN after move
+            self.fen_history.append(self.game_fen)
+            self.move_history.append(best_move)
 
             return best_move
+
         except Exception as e:
-            print(f"Stockfish error - {e}")
+            print(f"[DEBUG] Move History: {self.move_history}")
+            print(f"[DEBUG] Last FEN: {self.fen_history[-1:]}")
+            print(f"[ERROR] Stockfish crashed at FEN: {self.game_fen}")
+            print(f"[ERROR] Exception: {type(e).__name__} - {e}")
             return None
 
-    def select_non_repeating_move(self, top_moves):
+    def is_draw_about_to_happen(self, next_move: str):
+        if len(self.move_history) < 3:
+            return False
+
+        if self.move_history[1] == self.move_history[0] == next_move:
+            return True
+        return False
+
+    def select_non_drawing_move(self, top_moves):
         fen_counter = Counter(self.fen_history)
 
         for move in top_moves:
@@ -73,19 +110,16 @@ class StockfishLayer:
         return None
 
     def is_alive(self):
-        # Checks if Stockfish is still responsive
         if self.stockfish is None:
             return False
 
         try:
-            # Try getting a move to see if Stockfish is still alive
             self.stockfish.get_best_move()
-            return True  # Stockfish is alive
+            return True
         except Exception:
-            return False  # Stockfish has crashed
+            return False
 
     def restart_stockfish(self):
-        # Restarts Stockfish if it crashes
         print("[ERROR] -- Stockfish crashed. Restarting...")
         self.stockfish = self.start_stockfish()
 
@@ -101,16 +135,15 @@ class StockfishLayer:
         }
 
     def update_game_state(self, board_state, turn):
-        # If it's the first move, assume all castling rights are available
         if self.game_fen is None:
             castling_rights = "KQkq"
             en_passant = "-"
             halfmove = "0"
             fullmove = "1"
         else:
-            # Extract previous castling rights & en passant info from FEN
             fen_parts = self.game_fen.split(" ")
-            castling_rights = fen_parts[2] if len(fen_parts) > 2 else "-"
+            # castling_rights = fen_parts[2] if len(fen_parts) > 2 else "-"
+            castling_rights = utils.infer_castling_rights(board_state)
             en_passant = fen_parts[3] if len(fen_parts) > 3 else "-"
             halfmove = fen_parts[4] if len(fen_parts) > 4 else "0"
             fullmove = fen_parts[5] if len(fen_parts) > 5 else "1"

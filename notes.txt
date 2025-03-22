@@ -7,7 +7,3 @@ pyside6-rcc .\resources\resources.qrc -o .\resources\resources_qrc.py
 build:
 pyinstaller --onefile --windowed --name=DeepRook src/main.py
 pyinstaller --clean .\DeepRook.spec
-
-
-future:
-- Make it possible to just get the recommended move, without the bot controlling the mouse
