@@ -2,7 +2,6 @@ import pyautogui
 import time
 import ctypes
 from src.bot import Board
-from src.bot.Board import detect_board
 
 MOUSEEVENTF_LEFTDOWN = 0x0002
 MOUSEEVENTF_LEFTUP = 0x0004

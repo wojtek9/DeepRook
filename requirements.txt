@@ -7,3 +7,4 @@ pyautogui
 PySide6
 tensorflow
 stockfish
+pyinstaller
