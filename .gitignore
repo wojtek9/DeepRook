@@ -174,3 +174,4 @@ cython_debug/
 .pypirc
 
 resources_qrc.py
+notes.txt
