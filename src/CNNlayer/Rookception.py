@@ -8,6 +8,7 @@ from src.utils import utils
 class Rookception:
     def __init__(self, model_path: str):
         from tensorflow.keras.models import load_model  # Lazy import
+
         self.model = load_model(model_path)
         self.class_labels = ["bB", "bK", "bN", "bP", "bQ", "bR", "empty", "wB", "wK", "wN", "wP", "wQ", "wR"]
         self.img_size = (64, 64)
@@ -29,10 +30,9 @@ class Rookception:
                 right, bottom = (col + 1) * square_width, (row + 1) * square_height
 
                 # Extract, resize, normalize
-                squares[row, col] = np.array(
-                    image.crop((left, top, right, bottom))
-                    .resize(self.img_size), dtype=np.float32
-                ) / 255.0
+                squares[row, col] = (
+                    np.array(image.crop((left, top, right, bottom)).resize(self.img_size), dtype=np.float32) / 255.0
+                )
 
         return squares  # Shape: (8, 8, img_size[0], img_size[1], 3)
 
@@ -54,7 +54,7 @@ class Rookception:
             predicted_classes, confidences
         )
 
-        utils.print_board(board=board_with_accuracy, title="Predicted board with accuracy")
+        # utils.print_board(board=board_with_accuracy, title="Predicted board with accuracy")
         utils.print_board(board=board_state, title="Predicted board")
 
         return board_state

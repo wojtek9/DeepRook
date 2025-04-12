@@ -32,6 +32,7 @@ class StockfishLayer:
         self.game_fen = None
         self.fen_history = deque(maxlen=100)
         self.move_history = deque(maxlen=100)
+        self.has_up = False
 
     @staticmethod
     def start_stockfish():
@@ -51,6 +52,7 @@ class StockfishLayer:
             if not self.stockfish.is_fen_valid(self.game_fen):
                 print(f"[ERROR] Invalid FEN passed to Stockfish: {self.game_fen}")
                 return None
+            self.fen_history.append(self.game_fen)
 
             top_moves = self.stockfish.get_top_moves(2)
 
@@ -64,18 +66,19 @@ class StockfishLayer:
                 print("[ERROR] Stockfish returned None for best move.")
                 return None
 
+            print("fen history: ", self.fen_history)
+
             # Detect if repeating moves
-            if self.is_draw_about_to_happen(best_move):
-                if len(top_moves) > 1:
-                    best_move = top_moves[1]["Move"]
-                    print("[WARNING] Repetition detected: selecting next best move.")
-                else:
-                    print("[WARNING] Only one move available; repetition may occur.")
+            # if self.is_draw_about_to_happen(best_move):
+            #     if len(top_moves) > 1:
+            #         best_move = top_moves[1]["Move"]
+            #         print("[WARNING] Repetition detected: selecting next best move.")
+            #     else:
+            #         print("[WARNING] Only one move available; repetition may occur.")
 
             # Apply the move and update FEN
             self.stockfish.make_moves_from_current_position([best_move])
-            self.game_fen = self.stockfish.get_fen_position()
-            self.fen_history.append(self.game_fen)
+            # self.game_fen = self.stockfish.get_fen_position()
             self.move_history.append(best_move)
 
             return best_move
@@ -87,27 +90,40 @@ class StockfishLayer:
             print(f"[ERROR] Exception: {type(e).__name__} - {e}")
             return None
 
-    def is_draw_about_to_happen(self, next_move: str):
-        if len(self.move_history) < 3:
+    def is_draw_about_to_happen(self, next_move: str) -> bool:
+        """
+        Simulate the move and check if it will cause the board position
+        (excluding turn, castling, etc.) to appear for the third time.
+        """
+        if not next_move:
             return False
 
-        if self.move_history[1] == self.move_history[0] == next_move:
-            return True
-        return False
-
-    def select_non_drawing_move(self, top_moves):
-        fen_counter = Counter(self.fen_history)
-
-        for move in top_moves:
-            move_san = move["Move"]
-            self.stockfish.make_moves_from_current_position([move_san])
-            move_fen = self.stockfish.get_fen_position()
+        try:
+            # Simulate the FEN after next_move
             self.stockfish.set_fen_position(self.game_fen)
+            self.stockfish.make_moves_from_current_position([next_move])
+            simulated_fen = self.stockfish.get_fen_position()
+            self.stockfish.set_fen_position(self.game_fen)  # Reset
 
-            if fen_counter[move_fen] < 2:
-                return move_san
+            # Extract only the board layout part
+            stripped_fen = simulated_fen.split(" ")[0]
 
-        return None
+            # Include the simulated FEN in the count
+            all_positions = [fen.split(" ")[0] for fen in self.fen_history]
+            all_positions.append(stripped_fen)
+
+            repetition_count = all_positions.count(stripped_fen)
+            print(repetition_count)
+
+            if repetition_count >= 2:
+                print("[WARNING] Draw about to happen due to threefold repetition.")
+                return True
+
+            return False
+
+        except Exception as e:
+            print(f"[ERROR] Failed to simulate repetition: {e}")
+            return False
 
     def is_alive(self):
         if self.stockfish is None:
