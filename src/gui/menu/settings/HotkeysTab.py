@@ -8,7 +8,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QToolButton,
     QApplication,
-    QPushButton,
 )
 from PySide6.QtGui import QKeyEvent, QKeySequence, QIcon, QMouseEvent
 from PySide6.QtCore import Qt, Signal, QTimer
@@ -32,8 +31,11 @@ class HotkeyRowObject:
 
         self.line_edit = HotkeyLineEdit()
         self.accept_btn = self._create_button(":/icn/checkmark_icon", enabled=False)
+        self.accept_btn.setToolTip("Accept")
         self.block_btn = self._create_button(":/icn/block_icon", enabled=False)
+        self.block_btn.setToolTip("Block")
         self.clear_btn = self._create_button(":/icn/delete_icon", enabled=False)
+        self.clear_btn.setToolTip("Delete")
 
         self.accept_btn.clicked.connect(self._on_accept_btn_clicked)
         self.block_btn.clicked.connect(self._on_block_btn_clicked)
@@ -169,7 +171,11 @@ class HotkeysTab(QWidget):
 
         self.hotkey_row_objs: list[HotkeyRowObject] = [
             HotkeyRowObject(description="Get Next Move From Engine", hotkey=Hotkey.GET_NEXT_MOVE),
-            HotkeyRowObject(description="Make Next Move With Bot", hotkey=Hotkey.MAKE_NEXT_MOVE),
+            HotkeyRowObject(description="Make Next Move", hotkey=Hotkey.MAKE_NEXT_MOVE),
+            HotkeyRowObject(description="Make Best Move", hotkey=Hotkey.MAKE_BEST_MOVE),
+            HotkeyRowObject(description="Make 2nd Best Move", hotkey=Hotkey.MAKE_SECOND_BEST_MOVE),
+            HotkeyRowObject(description="Make 3rd Best Move", hotkey=Hotkey.MAKE_THIRD_BEST_MOVE),
+            HotkeyRowObject(description="Make 4th Best Move", hotkey=Hotkey.MAKE_FOURTH_BEST_MOVE),
             HotkeyRowObject(description="Increase Engine Depth", hotkey=Hotkey.INCREASE_DEPTH),
             HotkeyRowObject(description="Decrease Engine Depth", hotkey=Hotkey.DECREASE_DEPTH),
         ]
